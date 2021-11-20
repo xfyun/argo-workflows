@@ -80,6 +80,8 @@ func (woc *wfOperationCtx) createAgentPod(ctx context.Context) (*apiv1.Pod, erro
 		}
 	}
 
+	pluginSidecars, pluginAddresses := woc.getExecutorPlugins()
+
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
@@ -95,17 +97,20 @@ func (woc *wfOperationCtx) createAgentPod(ctx context.Context) (*apiv1.Pod, erro
 		Spec: apiv1.PodSpec{
 			RestartPolicy:    apiv1.RestartPolicyOnFailure,
 			ImagePullSecrets: woc.execWf.Spec.ImagePullSecrets,
-			Containers: []apiv1.Container{
-				{
-					Name:    "main",
-					Command: []string{"argoexec"},
-					Args:    []string{"agent"},
-					Image:   woc.controller.executorImage(),
+			Containers: append(
+				pluginSidecars,
+				apiv1.Container{
+					Name:            "main",
+					Command:         []string{"argoexec"},
+					Args:            []string{"agent"},
+					Image:           woc.controller.executorImage(),
+					ImagePullPolicy: woc.controller.executorImagePullPolicy(),
 					Env: []apiv1.EnvVar{
 						{Name: common.EnvVarWorkflowName, Value: woc.wf.Name},
+						{Name: common.EnvVarPluginAddresses, Value: wfv1.MustMarshallJSON(pluginAddresses)},
 					},
 				},
-			},
+			),
 		},
 	}
 
@@ -129,4 +134,19 @@ func (woc *wfOperationCtx) createAgentPod(ctx context.Context) (*apiv1.Pod, erro
 	}
 	woc.log.Infof("Created Agent pod: %s", created.Name)
 	return created, nil
+}
+
+func (woc *wfOperationCtx) getExecutorPlugins() ([]apiv1.Container, []string) {
+	var sidecars []apiv1.Container
+	var addresses []string
+	namespaces := map[string]bool{} // de-dupes plugins when their namespaces are the same
+	namespaces[woc.controller.namespace] = true
+	namespaces[woc.wf.Namespace] = true
+	for namespace := range namespaces {
+		for _, plug := range woc.controller.executorPlugins[namespace] {
+			sidecars = append(sidecars, plug.Spec.Container)
+			addresses = append(addresses, plug.Spec.Address)
+		}
+	}
+	return sidecars, addresses
 }

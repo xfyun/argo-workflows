@@ -1,0 +1,13 @@
+kind: ExecutorPlugin
+metadata:
+  name: python
+  annotations:
+    workflows.argoproj.io/description: This plugin allows you to run arbitrary Python code.
+spec:
+  address: http://localhost:7984
+  container:
+    command:
+      - python
+      - -c
+    image: python:alpine3.6
+    name: python-executor-plugin

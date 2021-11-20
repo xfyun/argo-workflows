@@ -59,6 +59,8 @@ const (
 	// Workflows and pods with a completed=true label will be ignored by the controller.
 	// See also `LabelKeyWorkflowArchivingStatus`.
 	LabelKeyCompleted = workflow.WorkflowFullName + "/completed"
+	// LabelKeyConfigMapType the type of the plugin
+	LabelKeyConfigMapType = workflow.WorkflowFullName + "/configmap-type"
 	// LabelKeyWorkflowArchivingStatus indicates if a workflow needs archiving or not:
 	// * `` - does not need archiving ... yet
 	// * `Pending` - pending archiving
@@ -105,6 +107,8 @@ const (
 	EnvVarPodName = "ARGO_POD_NAME"
 	// EnvVarWorkflowName
 	EnvVarWorkflowName = "ARGO_WORKFLOW_NAME"
+	// EnvVarPluginAddresses is a list of plugin addresses
+	EnvVarPluginAddresses = "ARGO_PLUGIN_ADDRESSES"
 	// EnvVarContainerName container the container's name for the current pod
 	EnvVarContainerName = "ARGO_CONTAINER_NAME"
 	// EnvVarDeadline is the deadline for the pod
