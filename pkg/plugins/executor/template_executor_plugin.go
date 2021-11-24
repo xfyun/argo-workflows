@@ -29,7 +29,7 @@ type ExecuteTemplateResponse struct {
 }
 
 type ExecuteTemplateReply struct {
-	Node *wfv1.NodeResult `json:"node,omitempty"`
+	Node    *wfv1.NodeResult `json:"node,omitempty"`
 	Requeue *metav1.Duration `json:"requeue,omitempty"`
 }
 
