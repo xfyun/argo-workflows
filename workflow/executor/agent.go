@@ -114,26 +114,33 @@ func (ae *AgentExecutor) Agent(ctx context.Context) error {
 func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, responseQueue chan response) {
 	for task := range taskQueue {
 		nodeID, tmpl := task.NodeId, task.Template
-		log.WithFields(log.Fields{"nodeID": nodeID}).Info("Attempting task")
+		log := log.WithFields(log.Fields{"nodeID": nodeID})
+		log.Info("Attempting task")
 
 		// Do not work on tasks that have already been considered once, to prevent calling an endpoint more
 		// than once unintentionally.
 		if _, ok := ae.consideredTasks[nodeID]; ok {
-			log.WithFields(log.Fields{"nodeID": nodeID}).Info("Task is already considered")
+			log.Info("Task is already considered")
 			continue
 		}
 
 		ae.consideredTasks[nodeID] = true
 
-		log.WithFields(log.Fields{"nodeID": nodeID}).Info("Processing task")
+		log.Info("Processing task")
 		result, requeue, err := ae.processTask(ctx, tmpl)
 		if err != nil {
-			log.WithFields(log.Fields{"error": err, "nodeID": nodeID}).Error("Error in agent task")
+			log.WithError(err).Error("Error in agent task")
 			return
 		}
 
-		log.WithFields(log.Fields{"nodeID": nodeID}).Info("Sending result")
-		responseQueue <- response{NodeId: nodeID, Result: result}
+		log.
+			WithField("phase", result.Phase).
+			WithField("requeue", requeue).
+			Info("Sending result")
+
+		if result.Phase != "" {
+			responseQueue <- response{NodeId: nodeID, Result: result}
+		}
 		if requeue > 0 {
 			time.AfterFunc(requeue, func() {
 				taskQueue <- task
@@ -143,7 +150,8 @@ func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, re
 }
 
 func (ae *AgentExecutor) patchWorker(ctx context.Context, taskSetInterface v1alpha1.WorkflowTaskSetInterface, responseQueue chan response) {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 	nodeResults := map[string]wfv1.NodeResult{}
 	for {
 		select {
@@ -185,7 +193,7 @@ func (ae *AgentExecutor) patchWorker(ctx context.Context, taskSetInterface v1alp
 			// Patch was successful, clear nodeResults for next iteration
 			nodeResults = map[string]wfv1.NodeResult{}
 
-			log.WithField("taskset", obj).Infof("Patched TaskSet")
+			log.Info("Patched TaskSet")
 		}
 	}
 }
@@ -256,7 +264,7 @@ func (ae *AgentExecutor) executePluginTemplate(_ context.Context, tmpl wfv1.Temp
 			return reply.GetRequeue(), nil
 		}
 	}
-	return 0, nil
+	return 0, fmt.Errorf("not plugin executed the template")
 }
 
 func IsWorkflowCompleted(wts *wfv1.WorkflowTaskSet) bool {
