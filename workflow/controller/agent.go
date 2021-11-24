@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow"
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
+	"github.com/argoproj/argo-workflows/v3/workflow/executor"
 )
 
 func (woc *wfOperationCtx) getAgentPodName() string {
@@ -82,6 +84,19 @@ func (woc *wfOperationCtx) createAgentPod(ctx context.Context) (*apiv1.Pod, erro
 
 	pluginSidecars, pluginAddresses := woc.getExecutorPlugins()
 
+	envVars := []apiv1.EnvVar{
+		{Name: common.EnvVarWorkflowName, Value: woc.wf.Name},
+		{Name: common.EnvVarPluginAddresses, Value: wfv1.MustMarshallJSON(pluginAddresses)},
+	}
+
+	// If the default number of task workers is overridden, then pass it to the agent pod.
+	if taskWorkers, exists := os.LookupEnv(executor.EnvAgentTaskWorkers); exists {
+		envVars = append(envVars, apiv1.EnvVar{
+			Name:  executor.EnvAgentTaskWorkers,
+			Value: taskWorkers,
+		})
+	}
+
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
@@ -105,10 +120,7 @@ func (woc *wfOperationCtx) createAgentPod(ctx context.Context) (*apiv1.Pod, erro
 					Args:            []string{"agent"},
 					Image:           woc.controller.executorImage(),
 					ImagePullPolicy: woc.controller.executorImagePullPolicy(),
-					Env: []apiv1.EnvVar{
-						{Name: common.EnvVarWorkflowName, Value: woc.wf.Name},
-						{Name: common.EnvVarPluginAddresses, Value: wfv1.MustMarshallJSON(pluginAddresses)},
-					},
+					Env:             envVars,
 				},
 			),
 		},

@@ -12,7 +12,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 
 	"github.com/argoproj/argo-workflows/v3"
-	workflow "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
 	executorplugins "github.com/argoproj/argo-workflows/v3/pkg/plugins/executor"
 	"github.com/argoproj/argo-workflows/v3/util/logs"
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
@@ -62,15 +61,5 @@ func initAgentExecutor() *executor.AgentExecutor {
 		plugins = append(plugins, rpc.New(address))
 	}
 
-	agentExecutor := executor.AgentExecutor{
-		ClientSet:         clientSet,
-		RESTClient:        restClient,
-		Namespace:         namespace,
-		WorkflowName:      workflowName,
-		WorkflowInterface: workflow.NewForConfigOrDie(config),
-		CompleteTask:      make(map[string]struct{}),
-		Plugins:           plugins,
-	}
-	return &agentExecutor
-
+	return executor.NewAgentExecutor(clientSet, restClient, config, namespace, workflowName, plugins)
 }
