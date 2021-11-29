@@ -237,8 +237,8 @@ scan-%:
 	docker scan --severity=high $(IMAGE_NAMESPACE)/$*:$(VERSION)
 
 # generation
-examples/plugins/%-plugin-configmap.yaml:
-	go run ./cmd/argo plugin build $(dir $@)
+examples/plugins/%-plugin-configmap.yaml: ./dist/argo
+	./dist/argo plugin build $(dir $@)
 
 plugins: $(shell find examples/plugins -name '*-configmap.yaml')
 
