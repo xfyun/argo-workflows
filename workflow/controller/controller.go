@@ -134,6 +134,14 @@ const (
 	workflowTaskSetResyncPeriod         = 20 * time.Minute
 )
 
+var cacheGCPeriod = env.LookupEnvDurationOr("CACHE_GC_PERIOD", 0)
+
+func init() {
+	if cacheGCPeriod != 0 {
+		log.WithField("cacheGCPeriod", cacheGCPeriod).Infof("GC for memoization caches will be performed every %s", cacheGCPeriod)
+	}
+}
+
 // NewWorkflowController instantiates a new WorkflowController
 func NewWorkflowController(ctx context.Context, restConfig *rest.Config, kubeclientset kubernetes.Interface, wfclientset wfclientset.Interface, namespace, managedNamespace, executorImage, executorImagePullPolicy, containerRuntimeExecutor, configMap string, plugins bool) (*WorkflowController, error) {
 	dynamicInterface, err := dynamic.NewForConfig(restConfig)
@@ -325,6 +333,9 @@ func (wfc *WorkflowController) startLeading(ctx context.Context, logCtx *log.Ent
 	}
 	for i := 0; i < podWorkers; i++ {
 		go wait.Until(wfc.podWorker, time.Second, ctx.Done())
+	}
+	if cacheGCPeriod != 0 {
+		go wait.JitterUntilWithContext(ctx, wfc.syncAllCacheForGC, cacheGCPeriod, 0.0, true)
 	}
 }
 

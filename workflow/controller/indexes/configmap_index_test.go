@@ -14,15 +14,13 @@ func TestConfigMapIndexFunc(t *testing.T) {
 	t.Run("NoLabel", func(t *testing.T) {
 		values, err := ConfigMapIndexFunc(&corev1.ConfigMap{})
 		assert.NoError(t, err)
-		assert.Empty(t, values)
+		assert.Equal(t, []string{""}, values)
 	})
 	t.Run("HasLabel", func(t *testing.T) {
 		values, err := ConfigMapIndexFunc(&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{common.LabelKeyConfigMapType: "cache"},
-			},
+			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{common.LabelKeyConfigMapType: common.LabelValueTypeConfigMapCache}},
 		})
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, values, []string{"cache"})
+		assert.ElementsMatch(t, values, []string{common.LabelValueTypeConfigMapCache})
 	})
 }

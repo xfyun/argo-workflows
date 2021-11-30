@@ -8,12 +8,9 @@ import (
 
 func ConfigMapIndexFunc(obj interface{}) ([]string, error) {
 	cm, ok := obj.(*corev1.ConfigMap)
+
 	if !ok {
 		return nil, nil
 	}
-	value, ok := cm.GetLabels()[common.LabelKeyConfigMapType]
-	if !ok {
-		return nil, nil
-	}
-	return []string{value}, nil
+	return []string{cm.GetLabels()[common.LabelKeyConfigMapType]}, nil
 }
