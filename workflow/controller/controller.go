@@ -1075,7 +1075,7 @@ func (wfc *WorkflowController) newConfigMapInformer() cache.SharedIndexInformer 
 		indexInformer.AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				cm := obj.(metav1.Object)
-				return cm.GetLabels()[common.LabelKeyConfigMapType] == "ExecutorPlugin"
+				return cm.GetLabels()[common.LabelKeyConfigMapType] == common.LabelValueTypeConfigMapExecutorPlugin
 			},
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: func(obj interface{}) {

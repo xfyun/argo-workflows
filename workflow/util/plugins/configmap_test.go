@@ -14,7 +14,7 @@ import (
 func TestToConfigMap(t *testing.T) {
 	cm, err := ToConfigMap(&spec.Plugin{
 		TypeMeta: metav1.TypeMeta{
-			Kind: "ExecutorPlugin",
+			Kind: common.LabelValueTypeConfigMapExecutorPlugin,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "my-plug",
@@ -47,7 +47,7 @@ func TestFromConfigMap(t *testing.T) {
 				"my-anno": "my-value",
 			},
 			Labels: map[string]string{
-				common.LabelKeyConfigMapType: "ExecutorPlugin",
+				common.LabelKeyConfigMapType: common.LabelValueTypeConfigMapExecutorPlugin,
 				"my-label":                   "my-value",
 			},
 		},
