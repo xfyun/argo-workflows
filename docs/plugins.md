@@ -7,7 +7,8 @@ Plugins allow you to extend Argo Workflows to add new capabilities.
 * You don't need to learn Golang, you can write in any language, including Python.
 * Simple: a plugin just responds to RPC HTTP requests.
 * You can iterate quickly by changing the plugin at runtime.
-* You can get your plugin running today, no need to wait 3-5 months for an Argo software release.
+* You can get your plugin running today, no need to wait 3-5 months for review, approval, merge and an Argo software
+  release.
 
 [Executor plugins](executor_plugins.md) written and installed by both users and admins.
 
@@ -41,7 +42,7 @@ be observed.
 
 ### Resources
 
-No resource requests or limits are enforced (as they move override system defaults), but you are strongly encouraged to
+No resource requests or limits are enforced (as they may override system defaults), but you are strongly encouraged to
 set these.
 
 ### Failure Modes
@@ -65,7 +66,7 @@ Fatal errors are typically contained as follows:
 
 ### Performance Is Important
 
-Consider a workflows with 100k nodes, and then consider you have 5 plugins:
+Consider a workflow with 100k nodes, and then consider you have 5 plugins:
 
 We'll make num(nodes) x num(plugins) calls.
 

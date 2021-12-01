@@ -53,7 +53,7 @@ if __name__ == '__main__':
     httpd.serve_forever()
 ```
 
-Somethings to note here:
+Some things to note here:
 
 * You only need to implement the calls you need. Return 404 and it won't be called again.
 * The path is the RPC method name.
@@ -107,6 +107,23 @@ spec:
 ```
 
 You'll see the workflow complete successfully.
+
+### Requeue
+
+It might be the case that the plugin must execute asynchronously, e.g. due to long running task. Is that case the plugin
+should return
+
+```json
+{
+  "node": {
+    "phase": "Pending",
+    "message": "Long-running task started"
+  },
+  "requeue": "2m"
+}
+```
+
+The task will be re-queue and send again in 2 minutes.
 
 ### Debugging
 

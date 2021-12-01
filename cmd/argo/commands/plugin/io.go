@@ -26,7 +26,10 @@ func loadPluginManifest(pluginDir string) (*spec.Plugin, error) {
 		return nil, err
 	}
 	if len(files) < 1 {
-		panic(fmt.Sprintf("plugin %s is missing a server.* file", p.Name))
+		return nil, fmt.Errorf("plugin %s is missing a server.* file", p.Name)
+	}
+	if len(files) > 1 {
+		return nil, fmt.Errorf("plugin %s has more than one server.* file", p.Name)
 	}
 	code, err := os.ReadFile(files[0])
 	if err != nil {

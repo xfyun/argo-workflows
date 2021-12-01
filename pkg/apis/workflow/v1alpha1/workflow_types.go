@@ -2368,7 +2368,6 @@ func (tmpl *Template) GetType() TemplateType {
 	return TemplateTypeUnknown
 }
 
-// TODO where used?
 func (tmpl *Template) GetNodeType() NodeType {
 	if tmpl.RetryStrategy != nil {
 		return NodeTypeRetry
