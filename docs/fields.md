@@ -238,8 +238,6 @@ Workflow is the definition of a workflow resource
 
 - [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
 
-- [`python-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/python/python-workflow.yaml)
-
 - [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
@@ -642,8 +640,6 @@ WorkflowSpec is the specification of a Workflow.
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
 
 - [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`python-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/python/python-workflow.yaml)
 
 - [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
@@ -1056,8 +1052,6 @@ CronWorkflowSpec is the specification of a CronWorkflow
 
 - [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
 
-- [`python-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/python/python-workflow.yaml)
-
 - [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
@@ -1424,8 +1418,6 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
 
 - [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`python-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/python/python-workflow.yaml)
 
 - [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
@@ -4719,8 +4711,6 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 
 - [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
 
-- [`python-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/python/python-workflow.yaml)
-
 - [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
@@ -5979,8 +5969,6 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
 
 - [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`python-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/python/python-workflow.yaml)
 
 - [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
