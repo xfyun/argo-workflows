@@ -156,8 +156,8 @@ func (woc *wfOperationCtx) getExecutorPlugins() ([]apiv1.Container, []string) {
 	namespaces[woc.wf.Namespace] = true
 	for namespace := range namespaces {
 		for _, plug := range woc.controller.executorPlugins[namespace] {
-			sidecars = append(sidecars, plug.Spec.Container)
-			addresses = append(addresses, plug.Spec.Address)
+			sidecars = append(sidecars, plug.Spec.Sidecar.Container)
+			addresses = append(addresses, plug.Spec.Sidecar.Address)
 		}
 	}
 	return sidecars, addresses

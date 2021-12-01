@@ -16,16 +16,17 @@ metadata:
         URL: https://hooks.slack.com/services/.../.../...
       ```
 spec:
-  address: http://localhost:7522
-  container:
-    command:
-      - python
-      - -c
-    env:
-      - name: URL
-        valueFrom:
-          secretKeyRef:
-            name: slack-executor-plugin
-            key: URL
-    image: python:alpine3.6
-    name: slack-executor-plugin
+  sidecar:
+    address: http://localhost:7522
+    container:
+      command:
+        - python
+        - -c
+      env:
+        - name: URL
+          valueFrom:
+            secretKeyRef:
+              name: slack-executor-plugin
+              key: URL
+      image: python:alpine3.6
+      name: slack-executor-plugin

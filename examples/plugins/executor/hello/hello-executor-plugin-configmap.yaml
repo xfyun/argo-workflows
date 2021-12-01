@@ -1,8 +1,8 @@
 # This is an auto-generated file. DO NOT EDIT
 apiVersion: v1
 data:
-  address: http://localhost:4355
-  container: |
+  sidecar.address: http://localhost:4355
+  sidecar.container: |
     args:
     - |
       import json

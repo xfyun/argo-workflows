@@ -32,7 +32,7 @@ func loadPluginManifest(pluginDir string) (*spec.Plugin, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.Spec.Container.Args = []string{string(code)}
+	p.Spec.Sidecar.Container.Args = []string{string(code)}
 	return p, nil
 }
 

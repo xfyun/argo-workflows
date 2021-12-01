@@ -12,6 +12,10 @@ type Plugin struct {
 }
 
 type PluginSpec struct {
+	Sidecar Sidecar `json:"sidecar"`
+}
+
+type Sidecar struct {
 	Address   string          `json:"address"`
 	Container apiv1.Container `json:"container"`
 }

@@ -13,7 +13,7 @@ import (
 )
 
 func ToConfigMap(p *spec.Plugin) (*apiv1.ConfigMap, error) {
-	data, err := yaml.Marshal(p.Spec.Container)
+	data, err := yaml.Marshal(p.Spec.Sidecar.Container)
 	if err != nil {
 		return nil, err
 	}
@@ -30,8 +30,8 @@ func ToConfigMap(p *spec.Plugin) (*apiv1.ConfigMap, error) {
 			},
 		},
 		Data: map[string]string{
-			"address":   p.Spec.Address,
-			"container": string(data),
+			"sidecar.address":   p.Spec.Sidecar.Address,
+			"sidecar.container": string(data),
 		},
 	}
 	for k, v := range p.Annotations {
@@ -54,7 +54,9 @@ func FromConfigMap(cm *apiv1.ConfigMap) (*spec.Plugin, error) {
 			Labels:      map[string]string{},
 		},
 		Spec: spec.PluginSpec{
-			Address: cm.Data["address"],
+			Sidecar: spec.Sidecar{
+				Address: cm.Data["sidecar.address"],
+			},
 		},
 	}
 	for k, v := range cm.Annotations {
@@ -64,6 +66,6 @@ func FromConfigMap(cm *apiv1.ConfigMap) (*spec.Plugin, error) {
 		p.Labels[k] = v
 	}
 	delete(p.Labels, common.LabelKeyConfigMapType)
-	err := yaml.UnmarshalStrict([]byte(cm.Data["container"]), &p.Spec.Container)
+	err := yaml.UnmarshalStrict([]byte(cm.Data["sidecar.container"]), &p.Spec.Sidecar.Container)
 	return p, err
 }

@@ -26,7 +26,7 @@ func TestToConfigMap(t *testing.T) {
 			},
 		},
 		Spec: spec.PluginSpec{
-			Address: "http://localhost:1234",
+			Sidecar: spec.Sidecar{Address: "http://localhost:1234"},
 		},
 	})
 	if assert.NoError(t, err) {
@@ -36,6 +36,10 @@ func TestToConfigMap(t *testing.T) {
 			"my-label":                             "my-value",
 			"workflows.argoproj.io/configmap-type": "ExecutorPlugin",
 		}, cm.Labels)
+		assert.Equal(t, map[string]string{
+			"sidecar.address":   "http://localhost:1234",
+			"sidecar.container": "name: \"\"\nresources: {}\n",
+		}, cm.Data)
 	}
 }
 
@@ -52,8 +56,8 @@ func TestFromConfigMap(t *testing.T) {
 			},
 		},
 		Data: map[string]string{
-			"address":   "http://my-addr",
-			"container": "{'name': 'my-name'}",
+			"sidecar.address":   "http://my-addr",
+			"sidecar.container": "{'name': 'my-name'}",
 		},
 	})
 	if assert.NoError(t, err) {
@@ -61,7 +65,7 @@ func TestFromConfigMap(t *testing.T) {
 		assert.Equal(t, "my-plug", p.Name)
 		assert.Len(t, p.Annotations, 1)
 		assert.Len(t, p.Labels, 1)
-		assert.Equal(t, "http://my-addr", p.Spec.Address)
-		assert.Equal(t, apiv1.Container{Name: "my-name"}, p.Spec.Container)
+		assert.Equal(t, "http://my-addr", p.Spec.Sidecar.Address)
+		assert.Equal(t, apiv1.Container{Name: "my-name"}, p.Spec.Sidecar.Container)
 	}
 }
