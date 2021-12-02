@@ -9,30 +9,31 @@ import (
 )
 
 func TestPlugin_Validate(t *testing.T) {
-	t.Run("ResourceRequests", func(t *testing.T) {
-		assert.EqualError(t, Plugin{}.Validate(), "resources requests are mandatory")
+	err := Plugin{}.Validate()
+	assert.EqualError(t, err, "sidecar is invalid: address is invalid: parse \"\": empty url")
+}
+
+func TestSidecar_Validate(t *testing.T) {
+	t.Run("AddressInvalid", func(t *testing.T) {
+		assert.EqualError(t, Sidecar{}.Validate(), "sidecar is invalid: address is invalid: parse \\\"\\\": empty url\"")
 	})
-	t.Run("ResourceLimits", func(t *testing.T) {
-		assert.EqualError(t, Plugin{
-			Spec: PluginSpec{
-				Sidecar: Sidecar{
-					Container: apiv1.Container{Resources: apiv1.ResourceRequirements{
-						Requests: map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
-					}},
-				},
-			},
-		}.Validate(), "resources limits are mandatory")
+	t.Run("ResourceRequestsMissing", func(t *testing.T) {
+		assert.EqualError(t, Sidecar{}.Validate(), "resources requests are mandatory")
+	})
+	t.Run("ResourceLimitsMissing", func(t *testing.T) {
+		assert.EqualError(t,
+			Sidecar{
+				Container: apiv1.Container{Resources: apiv1.ResourceRequirements{
+					Requests: map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
+				}},
+			}.Validate(), "resources limits are mandatory")
 	})
 	t.Run("SecurityContext", func(t *testing.T) {
-		assert.EqualError(t, Plugin{
-			Spec: PluginSpec{
-				Sidecar: Sidecar{
-					Container: apiv1.Container{Resources: apiv1.ResourceRequirements{
-						Requests: map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
-						Limits:   map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
-					}},
-				},
-			},
+		assert.EqualError(t, Sidecar{
+			Container: apiv1.Container{Resources: apiv1.ResourceRequirements{
+				Requests: map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
+				Limits:   map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
+			}},
 		}.Validate(), "security context is mandatory")
 	})
 }

@@ -2,9 +2,9 @@ package spec
 
 import (
 	"fmt"
-
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/url"
 )
 
 type Plugin struct {
@@ -14,15 +14,8 @@ type Plugin struct {
 }
 
 func (p Plugin) Validate() error {
-	c := p.Spec.Sidecar.Container
-	if c.Resources.Requests == nil {
-		return fmt.Errorf("resources requests are mandatory")
-	}
-	if c.Resources.Limits == nil {
-		return fmt.Errorf("resources limits are mandatory")
-	}
-	if c.SecurityContext == nil {
-		return fmt.Errorf("security context is mandatory")
+	if err := p.Spec.Sidecar.Validate(); err != nil {
+		return fmt.Errorf("sidecar is invalid: %w", err)
 	}
 	return nil
 }
@@ -34,4 +27,21 @@ type PluginSpec struct {
 type Sidecar struct {
 	Address   string          `json:"address"`
 	Container apiv1.Container `json:"container"`
+}
+
+func (s Sidecar) Validate() error {
+	if _, err := url.ParseRequestURI(s.Address); err != nil {
+		return fmt.Errorf("address is invalid: %w", err)
+	}
+	c := s.Container
+	if c.Resources.Requests == nil {
+		return fmt.Errorf("resources requests are mandatory")
+	}
+	if c.Resources.Limits == nil {
+		return fmt.Errorf("resources limits are mandatory")
+	}
+	if c.SecurityContext == nil {
+		return fmt.Errorf("security context is mandatory")
+	}
+	return nil
 }

@@ -13,6 +13,9 @@ import (
 )
 
 func ToConfigMap(p *spec.Plugin) (*apiv1.ConfigMap, error) {
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
 	data, err := yaml.Marshal(p.Spec.Sidecar.Container)
 	if err != nil {
 		return nil, err
@@ -66,6 +69,8 @@ func FromConfigMap(cm *apiv1.ConfigMap) (*spec.Plugin, error) {
 		p.Labels[k] = v
 	}
 	delete(p.Labels, common.LabelKeyConfigMapType)
-	err := yaml.UnmarshalStrict([]byte(cm.Data["sidecar.container"]), &p.Spec.Sidecar.Container)
-	return p, err
+	if err := yaml.UnmarshalStrict([]byte(cm.Data["sidecar.container"]), &p.Spec.Sidecar.Container); err != nil {
+		return nil, err
+	}
+	return p, p.Validate()
 }
