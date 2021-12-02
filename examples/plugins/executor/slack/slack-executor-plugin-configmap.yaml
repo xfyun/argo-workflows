@@ -55,7 +55,16 @@ data:
           name: slack-executor-plugin
     image: python:alpine3.6
     name: slack-executor-plugin
-    resources: {}
+    resources:
+      limits:
+        cpu: 200m
+        memory: 64Mi
+      requests:
+        cpu: 100m
+        memory: 32Mi
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
 kind: ConfigMap
 metadata:
   annotations:

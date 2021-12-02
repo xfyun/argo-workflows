@@ -12,7 +12,6 @@ spec:
         - -c
       image: python:alpine3.6
       name: hello-executor-plugin
-      # Resource requests and limits are not mandatory, but strongly encouraged.
       resources:
         requests:
           cpu: 100m
@@ -20,7 +19,6 @@ spec:
         limits:
           cpu: 200m
           memory: 64Mi
-      # A security context is not mandatory, but strongly encouraged.
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

@@ -25,18 +25,16 @@ func loadPluginManifest(pluginDir string) (*spec.Plugin, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(files) < 1 {
-		return nil, fmt.Errorf("plugin %s is missing a server.* file", p.Name)
-	}
-	if len(files) > 1 {
+	if len(files) == 1 {
+		code, err := os.ReadFile(files[0])
+		if err != nil {
+			return nil, err
+		}
+		p.Spec.Sidecar.Container.Args = []string{string(code)}
+	} else if len(files) > 1 {
 		return nil, fmt.Errorf("plugin %s has more than one server.* file", p.Name)
 	}
-	code, err := os.ReadFile(files[0])
-	if err != nil {
-		return nil, err
-	}
-	p.Spec.Sidecar.Container.Args = []string{string(code)}
-	return p, nil
+	return p, p.Validate()
 }
 
 func addHeader(x []byte, h string) []byte {
