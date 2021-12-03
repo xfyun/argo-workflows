@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"text/template"
 
 	apiv1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
@@ -53,4 +54,37 @@ func saveConfigMap(cm *apiv1.ConfigMap, pluginDir string) (string, error) {
 	cmPath := filepath.Join(pluginDir, fmt.Sprintf("%s-configmap.yaml", cm.Name))
 	err = os.WriteFile(cmPath, addCodegenHeader(data), 0666)
 	return cmPath, err
+}
+
+func saveReadme(pluginDir string, plug *spec.Plugin) (string, error) {
+	readmePath := filepath.Join(pluginDir, "README.md")
+	f, err := os.Create(readmePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	tmpl, err := template.New("readme").Parse(`<!-- This is an auto-generated file. DO NOT EDIT -->
+# {{.Name}}
+
+* Needs: {{index .Annotations "workflows.argoproj.io/version"}}
+* Image: {{.Spec.Sidecar.Container.Image}}
+
+{{index .Annotations "workflows.argoproj.io/description"}}
+
+Install:
+
+    kubectl apply -f {{.Name}}-executor-plugin-configmap.yaml
+
+Uninstall:
+	
+	kubectl delete cm {{.Name}}-executor-plugin 
+`)
+	if err != nil {
+		return "", err
+	}
+	err = tmpl.Execute(f, plug)
+	if err != nil {
+		return "", err
+	}
+	return readmePath, nil
 }

@@ -55,7 +55,24 @@ data:
 kind: ConfigMap
 metadata:
   annotations:
-    workflow.argoproj.io/description: This is the "hello world" plugin
+    workflows.argoproj.io/description: |
+      This is the "hello world" plugin.
+
+      Example:
+
+      ```yaml
+      apiVersion: argoproj.io/v1alpha1
+      kind: Workflow
+      metadata:
+        generateName: hello-example-
+      spec:
+        entrypoint: main
+        templates:
+          - name: main
+            plugin:
+              hello: { }
+      ```
+    workflows.argoproj.io/version: '>= v3.3'
   creationTimestamp: null
   labels:
     workflows.argoproj.io/configmap-type: ExecutorPlugin

@@ -3,7 +3,7 @@ metadata:
   name: slack
   annotations:
     workflows.argoproj.io/description: |
-      This is an example that sends a Slack message.
+      This plugin sends a Slack message.
 
       You must create a secret:
 
@@ -15,6 +15,23 @@ metadata:
       stringData:
         URL: https://hooks.slack.com/services/.../.../...
       ```
+
+      Example:
+
+      ```yaml
+      apiVersion: argoproj.io/v1alpha1
+      kind: Workflow
+      metadata:
+        generateName: slack-example-
+      spec:
+        entrypoint: main
+        templates:
+          - name: main
+            plugin:
+              slack:
+                text: "{{workflow.name}} finished!"
+      ```
+    workflows.argoproj.io/version: '>= v3.3'
 spec:
   sidecar:
     address: http://localhost:7522

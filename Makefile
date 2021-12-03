@@ -237,10 +237,11 @@ scan-%:
 	docker scan --severity=high $(IMAGE_NAMESPACE)/$*:$(VERSION)
 
 # generation
-examples/plugins/%-plugin-configmap.yaml: ./dist/argo
+plugins/%-plugin-configmap.yaml: ./dist/argo
 	./dist/argo plugin build $(dir $@)
 
-plugins: $(shell find examples/plugins -name '*-configmap.yaml')
+.PHONY: plugins
+plugins: $(shell find plugins -name '*-configmap.yaml')
 
 .PHONY: codegen
 codegen: types swagger docs manifests plugins

@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
   - ../minimal
-  - ../../../../examples/plugins/executor/hello/hello-executor-plugin-configmap.yaml
+  - ../../../../plugins/executor/hello/hello-executor-plugin-configmap.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: argo

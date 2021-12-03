@@ -2,9 +2,8 @@ package plugin
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
+	"os"
 
 	plugin "github.com/argoproj/argo-workflows/v3/workflow/util/plugins"
 )
@@ -33,6 +32,11 @@ func NewBuildCommand() *cobra.Command {
 				return err
 			}
 			fmt.Printf("%s created\n", cmPath)
+			readmePath, err := saveReadme(pluginDir, plug)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("%s created\n", readmePath)
 			return nil
 		},
 	}
