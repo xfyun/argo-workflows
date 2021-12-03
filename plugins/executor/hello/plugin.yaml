@@ -22,13 +22,14 @@ metadata:
     workflows.argoproj.io/version: '>= v3.3'
 spec:
   sidecar:
-    address: http://localhost:4355
     container:
       command:
         - python
         - -c
       image: python:alpine3.6
       name: hello-executor-plugin
+      ports:
+        - containerPort: 4355
       resources:
         requests:
           cpu: 100m

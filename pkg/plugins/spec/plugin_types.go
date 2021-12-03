@@ -2,7 +2,6 @@ package spec
 
 import (
 	"fmt"
-	"net/url"
 
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,15 +25,14 @@ type PluginSpec struct {
 }
 
 type Sidecar struct {
-	Address   string          `json:"address"`
 	Container apiv1.Container `json:"container"`
 }
 
 func (s Sidecar) Validate() error {
-	if _, err := url.ParseRequestURI(s.Address); err != nil {
-		return fmt.Errorf("address is invalid: %w", err)
-	}
 	c := s.Container
+	if len(c.Ports) < 1 {
+		return fmt.Errorf("at least one port is mandatory")
+	}
 	if c.Resources.Requests == nil {
 		return fmt.Errorf("resources requests are mandatory")
 	}

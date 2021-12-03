@@ -236,10 +236,6 @@ Workflow is the definition of a workflow resource
 
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
 
-- [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
-
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
 
 - [`pod-gc-strategy.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy.yaml)
@@ -638,10 +634,6 @@ WorkflowSpec is the specification of a Workflow.
 - [`parameter-aggregation-script.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation-script.yaml)
 
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
-
-- [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
 
@@ -1050,10 +1042,6 @@ CronWorkflowSpec is the specification of a CronWorkflow
 
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
 
-- [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
-
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
 
 - [`pod-gc-strategy.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy.yaml)
@@ -1416,10 +1404,6 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 - [`parameter-aggregation-script.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation-script.yaml)
 
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
-
-- [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
 
@@ -4709,10 +4693,6 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
 
-- [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
-
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
 
 - [`pod-gc-strategy.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy.yaml)
@@ -5967,10 +5947,6 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 - [`parameter-aggregation-script.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation-script.yaml)
 
 - [`parameter-aggregation.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/parameter-aggregation.yaml)
-
-- [`hello-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/hello/hello-workflow.yaml)
-
-- [`slack-workflow.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/plugins/executor/slack/slack-workflow.yaml)
 
 - [`pod-gc-strategy-with-label-selector.yaml`](https://github.com/argoproj/argo-workflows/blob/master/examples/pod-gc-strategy-with-label-selector.yaml)
 

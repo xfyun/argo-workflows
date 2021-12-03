@@ -82,12 +82,11 @@ func (woc *wfOperationCtx) createAgentPod(ctx context.Context) (*apiv1.Pod, erro
 		}
 	}
 
-	pluginSidecars, pluginAddresses := woc.getExecutorPlugins()
-
+	pluginSidecars := woc.getExecutorPlugins()
 	envVars := []apiv1.EnvVar{
 		{Name: common.EnvVarWorkflowName, Value: woc.wf.Name},
 		{Name: common.EnvAgentPatchRate, Value: env.LookupEnvStringOr(common.EnvAgentPatchRate, GetRequeueTime().String())},
-		{Name: common.EnvVarPluginAddresses, Value: wfv1.MustMarshallJSON(pluginAddresses)},
+		{Name: common.EnvVarPluginAddresses, Value: wfv1.MustMarshallJSON(addresses(pluginSidecars))},
 	}
 
 	// If the default number of task workers is overridden, then pass it to the agent pod.
@@ -149,17 +148,23 @@ func (woc *wfOperationCtx) createAgentPod(ctx context.Context) (*apiv1.Pod, erro
 	return created, nil
 }
 
-func (woc *wfOperationCtx) getExecutorPlugins() ([]apiv1.Container, []string) {
+func (woc *wfOperationCtx) getExecutorPlugins() []apiv1.Container {
 	var sidecars []apiv1.Container
-	var addresses []string
 	namespaces := map[string]bool{} // de-dupes plugins when their namespaces are the same
 	namespaces[woc.controller.namespace] = true
 	namespaces[woc.wf.Namespace] = true
 	for namespace := range namespaces {
 		for _, plug := range woc.controller.executorPlugins[namespace] {
 			sidecars = append(sidecars, plug.Spec.Sidecar.Container)
-			addresses = append(addresses, plug.Spec.Sidecar.Address)
 		}
 	}
-	return sidecars, addresses
+	return sidecars
+}
+
+func addresses(containers []apiv1.Container) []string {
+	var addresses []string
+	for _, c := range containers {
+		addresses = append(addresses, fmt.Sprintf("http://localhost:%d", c.Ports[0].ContainerPort))
+	}
+	return addresses
 }

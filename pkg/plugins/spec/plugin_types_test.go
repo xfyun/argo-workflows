@@ -10,34 +10,38 @@ import (
 
 func TestPlugin_Validate(t *testing.T) {
 	err := Plugin{}.Validate()
-	assert.EqualError(t, err, "sidecar is invalid: address is invalid: parse \"\": empty url")
+	assert.EqualError(t, err, "sidecar is invalid: at least one port is mandatory")
 }
 
 func TestSidecar_Validate(t *testing.T) {
-	t.Run("AddressInvalid", func(t *testing.T) {
-		assert.EqualError(t, Sidecar{}.Validate(), "address is invalid: parse \"\": empty url")
+	t.Run("NoPorts", func(t *testing.T) {
+		assert.EqualError(t, Sidecar{}.Validate(), "at least one port is mandatory")
 	})
 	t.Run("ResourceRequestsMissing", func(t *testing.T) {
 		assert.EqualError(t, Sidecar{
-			Address: "http://localhost",
+			Container: apiv1.Container{Ports: []apiv1.ContainerPort{{}}},
 		}.Validate(), "resources requests are mandatory")
 	})
 	t.Run("ResourceLimitsMissing", func(t *testing.T) {
 		assert.EqualError(t,
 			Sidecar{
-				Address: "http://localhost",
-				Container: apiv1.Container{Resources: apiv1.ResourceRequirements{
-					Requests: map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
-				}},
+				Container: apiv1.Container{
+					Ports: []apiv1.ContainerPort{{}},
+					Resources: apiv1.ResourceRequirements{
+						Requests: map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
+					},
+				},
 			}.Validate(), "resources limits are mandatory")
 	})
 	t.Run("SecurityContext", func(t *testing.T) {
 		assert.EqualError(t, Sidecar{
-			Address: "http://localhost",
-			Container: apiv1.Container{Resources: apiv1.ResourceRequirements{
-				Requests: map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
-				Limits:   map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
-			}},
+			Container: apiv1.Container{
+				Ports: []apiv1.ContainerPort{{}},
+				Resources: apiv1.ResourceRequirements{
+					Requests: map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
+					Limits:   map[apiv1.ResourceName]resource.Quantity{apiv1.ResourceCPU: resource.MustParse("1")},
+				},
+			},
 		}.Validate(), "security context is mandatory")
 	})
 }

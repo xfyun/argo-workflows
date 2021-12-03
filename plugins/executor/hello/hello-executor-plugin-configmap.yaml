@@ -1,7 +1,6 @@
 # This is an auto-generated file. DO NOT EDIT
 apiVersion: v1
 data:
-  sidecar.address: http://localhost:4355
   sidecar.container: |
     args:
     - |
@@ -42,6 +41,8 @@ data:
     - -c
     image: python:alpine3.6
     name: hello-executor-plugin
+    ports:
+    - containerPort: 4355
     resources:
       limits:
         cpu: 200m

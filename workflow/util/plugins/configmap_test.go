@@ -15,7 +15,7 @@ import (
 func TestToConfigMap(t *testing.T) {
 	t.Run("Invalid", func(t *testing.T) {
 		_, err := ToConfigMap(&spec.Plugin{})
-		assert.EqualError(t, err, "sidecar is invalid: address is invalid: parse \"\": empty url")
+		assert.EqualError(t, err, "sidecar is invalid: at least one port is mandatory")
 	})
 	t.Run("Valid", func(t *testing.T) {
 		cm, err := ToConfigMap(&spec.Plugin{
@@ -33,8 +33,8 @@ func TestToConfigMap(t *testing.T) {
 			},
 			Spec: spec.PluginSpec{
 				Sidecar: spec.Sidecar{
-					Address: "http://localhost:1234",
 					Container: apiv1.Container{
+						Ports: []apiv1.ContainerPort{{ContainerPort: 1234}},
 						Resources: apiv1.ResourceRequirements{
 							Limits:   map[apiv1.ResourceName]resource.Quantity{},
 							Requests: map[apiv1.ResourceName]resource.Quantity{},
@@ -52,8 +52,7 @@ func TestToConfigMap(t *testing.T) {
 				"workflows.argoproj.io/configmap-type": "ExecutorPlugin",
 			}, cm.Labels)
 			assert.Equal(t, map[string]string{
-				"sidecar.address":   "http://localhost:1234",
-				"sidecar.container": "name: \"\"\nresources: {}\nsecurityContext: {}\n",
+				"sidecar.container": "name: \"\"\nports:\n- containerPort: 1234\nresources: {}\nsecurityContext: {}\n",
 			}, cm.Data)
 		}
 	})
@@ -62,7 +61,7 @@ func TestToConfigMap(t *testing.T) {
 func TestFromConfigMap(t *testing.T) {
 	t.Run("Invalid", func(t *testing.T) {
 		_, err := FromConfigMap(&apiv1.ConfigMap{})
-		assert.EqualError(t, err, "sidecar is invalid: address is invalid: parse \"\": empty url")
+		assert.EqualError(t, err, "sidecar is invalid: at least one port is mandatory")
 	})
 	t.Run("Valid", func(t *testing.T) {
 		p, err := FromConfigMap(&apiv1.ConfigMap{
@@ -78,7 +77,7 @@ func TestFromConfigMap(t *testing.T) {
 			},
 			Data: map[string]string{
 				"sidecar.address":   "http://my-addr",
-				"sidecar.container": "{'name': 'my-name', 'resources': {'requests': {}, 'limits': {}}, 'securityContext': {}}",
+				"sidecar.container": "{'name': 'my-name', 'ports': [{}], 'resources': {'requests': {}, 'limits': {}}, 'securityContext': {}}",
 			},
 		})
 		if assert.NoError(t, err) {
@@ -86,9 +85,9 @@ func TestFromConfigMap(t *testing.T) {
 			assert.Equal(t, "my-plug", p.Name)
 			assert.Len(t, p.Annotations, 1)
 			assert.Len(t, p.Labels, 1)
-			assert.Equal(t, "http://my-addr", p.Spec.Sidecar.Address)
 			assert.Equal(t, apiv1.Container{
-				Name: "my-name",
+				Name:  "my-name",
+				Ports: []apiv1.ContainerPort{{}},
 				Resources: apiv1.ResourceRequirements{
 					Limits:   map[apiv1.ResourceName]resource.Quantity{},
 					Requests: map[apiv1.ResourceName]resource.Quantity{},

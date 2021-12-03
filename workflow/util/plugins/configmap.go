@@ -33,7 +33,6 @@ func ToConfigMap(p *spec.Plugin) (*apiv1.ConfigMap, error) {
 			},
 		},
 		Data: map[string]string{
-			"sidecar.address":   p.Spec.Sidecar.Address,
 			"sidecar.container": string(data),
 		},
 	}
@@ -55,11 +54,6 @@ func FromConfigMap(cm *apiv1.ConfigMap) (*spec.Plugin, error) {
 			Name:        strings.TrimSuffix(cm.Name, "-executor-plugin"),
 			Annotations: map[string]string{},
 			Labels:      map[string]string{},
-		},
-		Spec: spec.PluginSpec{
-			Sidecar: spec.Sidecar{
-				Address: cm.Data["sidecar.address"],
-			},
 		},
 	}
 	for k, v := range cm.Annotations {
