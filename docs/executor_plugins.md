@@ -4,7 +4,7 @@
 
 ### Template Executor
 
-There is only one type of executor plugin, one that runs custom ("plugin") templates, e.g for non-pod tasks such as
+There is only one type of executor plugin, one that runs custom ("plugin") templates, e.g. for non-pod tasks such as
 Tekton builds or Spark jobs.
 
 ## A Simple Python Plugin
@@ -57,8 +57,8 @@ Some things to note here:
 
 * You only need to implement the calls you need. Return 404 and it won't be called again.
 * The path is the RPC method name.
-* The request body contains the parameters.
-* The response body contains the result.
+* The request body contains the template's input parameters.
+* The response body contains the node result, including the phase (e.g. "Succeeded" or "Failed") and a message
 
 Next, create a manifest named `plugin.yaml`:
 
@@ -136,3 +136,4 @@ kubectl -n argo logs ${agentPodName} -c hello-executor-plugin
 ### Learn More
 
 - Read the [API reference](executor_swagger.md).
+- Read the [security recommendations](plugins.md#security) for plugins.
