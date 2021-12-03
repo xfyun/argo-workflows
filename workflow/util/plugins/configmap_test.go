@@ -1,11 +1,13 @@
 package plugin
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/stretchr/testify/assert"
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/argoproj/argo-workflows/v3/pkg/plugins/spec"
@@ -15,7 +17,7 @@ import (
 func TestToConfigMap(t *testing.T) {
 	t.Run("Invalid", func(t *testing.T) {
 		_, err := ToConfigMap(&spec.Plugin{})
-		assert.EqualError(t, err, "resources requests are mandatory")
+		assert.EqualError(t, err, "sidecar is invalid: address is invalid: parse \"\": empty url")
 	})
 	t.Run("Valid", func(t *testing.T) {
 		cm, err := ToConfigMap(&spec.Plugin{
@@ -61,9 +63,8 @@ func TestToConfigMap(t *testing.T) {
 
 func TestFromConfigMap(t *testing.T) {
 	t.Run("Invalid", func(t *testing.T) {
-		_, err := FromConfigMap(&apiv1.ConfigMap{
-		})
-		assert.EqualError(t, err, "TODO")
+		_, err := FromConfigMap(&apiv1.ConfigMap{})
+		assert.EqualError(t, err, "sidecar is invalid: address is invalid: parse \"\": empty url")
 	})
 	t.Run("Valid", func(t *testing.T) {
 		p, err := FromConfigMap(&apiv1.ConfigMap{
@@ -79,7 +80,7 @@ func TestFromConfigMap(t *testing.T) {
 			},
 			Data: map[string]string{
 				"sidecar.address":   "http://my-addr",
-				"sidecar.container": "{'name': 'my-name'}",
+				"sidecar.container": "{'name': 'my-name', 'resources': {'requests': {}, 'limits': {}}, 'securityContext': {}}",
 			},
 		})
 		if assert.NoError(t, err) {
@@ -88,7 +89,14 @@ func TestFromConfigMap(t *testing.T) {
 			assert.Len(t, p.Annotations, 1)
 			assert.Len(t, p.Labels, 1)
 			assert.Equal(t, "http://my-addr", p.Spec.Sidecar.Address)
-			assert.Equal(t, apiv1.Container{Name: "my-name"}, p.Spec.Sidecar.Container)
+			assert.Equal(t, apiv1.Container{
+				Name: "my-name",
+				Resources: apiv1.ResourceRequirements{
+					Limits:   map[apiv1.ResourceName]resource.Quantity{},
+					Requests: map[apiv1.ResourceName]resource.Quantity{},
+				},
+				SecurityContext: &apiv1.SecurityContext{},
+			}, p.Spec.Sidecar.Container)
 		}
 	})
 }
