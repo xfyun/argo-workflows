@@ -31,21 +31,17 @@ spec:
               value: "true"
 ```
 
-## Considerations
-
-### Failure Modes
+## Failures
 
 A plugin may fail as follows:
 
-* Connection/socket problems.
-* Timeout (1s for controller plugins, 30s for executor plugins).
-* Transient error.
-* 4xx or 5xx error:
-    * 404 error - endpoint will not be invoked again.
-    * 503 error - considered a transient error.
-* Multiple invocations of the same plugin take too long.
+* Connection/socket error - considered transient.
+* Timeout - considered transient.
+* 404 error - method is not supported by the plugin, as a result the method will not be called again.
+* 503 error - considered transient.
+* Other 4xx/5xx errors - considered fatal.
 
 Transient errors are retried, all other errors are considered fatal.
 
-Fatal errors will result in an errored workflow.
+Fatal errors will result in an failed steps.
 

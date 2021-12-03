@@ -13,8 +13,9 @@ Lets make a Python plugin that prints "hello" each time the workflow is operated
 
 We need the following:
 
-1. A HTTP server that will be run as a sidecar to the main container responds to RPC HTTP requests from the executor.
-2. Configuration so the controller can discover the plugin.
+1. [Plugins enabled](plugins.md) .
+2. A HTTP server that will be run as a sidecar to the main container responds to RPC HTTP requests from the executor.
+3. Configuration so the controller can discover the plugin.
 
 We'll need to create a script that starts a HTTP server:
 
@@ -67,7 +68,6 @@ kind: ExecutorPlugin
 metadata:
   name: hello
 spec:
-  address: http://localhost:4355
   description: This is the "hello world" plugin
   container:
     command:
@@ -75,6 +75,8 @@ spec:
       - -c
     image: python:alpine3.6
     name: hello-executor-plugin
+    ports:
+      - containerPort: 4355
 ```
 
 Build and install as follows:
@@ -88,7 +90,6 @@ Check your controller logs:
 
 ```
 level=info msg="Executor plugin added" name=hello-controller-plugin
-
 ```
 
 Run this workflow.

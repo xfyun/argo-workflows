@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-
 	"github.com/spf13/cobra"
 
 	plugin "github.com/argoproj/argo-workflows/v3/workflow/util/plugins"
