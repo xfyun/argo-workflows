@@ -67,9 +67,6 @@ type response struct {
 
 func (ae *AgentExecutor) Agent(ctx context.Context) error {
 	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
-	defer log.Info("stopped agent")
-
-	log := log.WithField("workflow", ae.WorkflowName)
 
 	taskWorkers := env.LookupEnvIntOr(common.EnvAgentTaskWorkers, 16)
 	requeueTime := env.LookupEnvDurationOr(common.EnvAgentPatchRate, 10*time.Second)
@@ -129,7 +126,7 @@ func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, re
 		ae.consideredTasks[nodeID] = true
 
 		log.Info("Processing task")
-		result, err := ae.processTask(ctx, tmpl)
+		result, requeue, err := ae.processTask(ctx, tmpl)
 		if err != nil {
 			log.WithError(err).Error("Error in agent task")
 			return
@@ -137,6 +134,7 @@ func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, re
 
 		log.
 			WithField("phase", result.Phase).
+			WithField("message", result.Message).
 			WithField("requeue", requeue).
 			Info("Sending result")
 
