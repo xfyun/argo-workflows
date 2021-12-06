@@ -14,7 +14,7 @@ Plugins allow you to extend Argo Workflows to add new capabilities.
 
 ## Configuration
 
-Plugins are disabled by default. To enable them, start the controller with `ARGO_PLUGINS=true`, e.g.
+Plugins are disabled by default. To enable them, start the controller with `ARGO_EXECUTOR_PLUGINS=true`, e.g.
 
 ```yaml
 apiVersion: apps/v1
@@ -27,7 +27,7 @@ spec:
       containers:
         - name: workflow-controller
           env:
-            - name: ARGO_PLUGINS
+            - name: ARGO_EXECUTOR_PLUGINS
               value: "true"
 ```
 

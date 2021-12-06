@@ -152,7 +152,7 @@ func (woc *wfOperationCtx) createAgentPod(ctx context.Context) (*apiv1.Pod, erro
 
 func (woc *wfOperationCtx) getExecutorPlugins() []apiv1.Container {
 	var sidecars []apiv1.Container
-	namespaces := map[string]bool{} // de-dupes plugins when their namespaces are the same
+	namespaces := map[string]bool{} // de-dupes executorPlugins when their namespaces are the same
 	namespaces[woc.controller.namespace] = true
 	namespaces[woc.wf.Namespace] = true
 	for namespace := range namespaces {
