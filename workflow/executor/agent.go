@@ -30,6 +30,7 @@ import (
 )
 
 type AgentExecutor struct {
+	log               *log.Entry
 	WorkflowName      string
 	ClientSet         kubernetes.Interface
 	WorkflowInterface workflow.Interface
@@ -43,6 +44,7 @@ type templateExecutor = func(ctx context.Context, tmpl wfv1.Template, reply *wfv
 
 func NewAgentExecutor(clientSet kubernetes.Interface, restClient rest.Interface, config *rest.Config, namespace, workflowName string, plugins []executorplugins.TemplateExecutor) *AgentExecutor {
 	return &AgentExecutor{
+		log:               log.WithField("workflow", workflowName),
 		ClientSet:         clientSet,
 		RESTClient:        restClient,
 		Namespace:         namespace,
@@ -71,9 +73,7 @@ func (ae *AgentExecutor) Agent(ctx context.Context) error {
 
 	taskWorkers := env.LookupEnvIntOr(common.EnvAgentTaskWorkers, 16)
 	requeueTime := env.LookupEnvDurationOr(common.EnvAgentPatchRate, 10*time.Second)
-	log.WithField("taskWorkers", taskWorkers).
-		WithField("requeueTime", requeueTime).
-		Info("Starting Agent")
+	ae.log.WithFields(log.Fields{"taskWorkers": taskWorkers, "requeueTime": requeueTime}).Info("Starting Agent")
 
 	taskQueue := make(chan task)
 	responseQueue := make(chan response)
@@ -91,7 +91,7 @@ func (ae *AgentExecutor) Agent(ctx context.Context) error {
 		}
 
 		for event := range wfWatch.ResultChan() {
-			log.WithField("event_type", event.Type).Info("TaskSet Event")
+			ae.log.WithField("event_type", event.Type).Info("TaskSet Event")
 
 			if event.Type == watch.Deleted {
 				// We're done if the task set is deleted
@@ -103,6 +103,7 @@ func (ae *AgentExecutor) Agent(ctx context.Context) error {
 				return apierr.FromObject(event.Object)
 			}
 			if IsWorkflowCompleted(taskSet) {
+				ae.log.Info("Workflow completed... stopping agent")
 				return nil
 			}
 
@@ -116,8 +117,7 @@ func (ae *AgentExecutor) Agent(ctx context.Context) error {
 func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, responseQueue chan response) {
 	for task := range taskQueue {
 		nodeID, tmpl := task.NodeId, task.Template
-		log := log.WithFields(log.Fields{"nodeID": nodeID})
-		log.Info("Attempting task")
+		log := log.WithField("nodeID", nodeID)
 
 		// Do not work on tasks that have already been considered once, to prevent calling an endpoint more
 		// than once unintentionally.
@@ -129,7 +129,7 @@ func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, re
 		ae.consideredTasks[nodeID] = true
 
 		log.Info("Processing task")
-		result, requeue, err := ae.processTask(ctx, tmpl)
+		result, err := ae.processTask(ctx, tmpl)
 		if err != nil {
 			log.WithError(err).Error("Error in agent task")
 			return
@@ -166,16 +166,18 @@ func (ae *AgentExecutor) patchWorker(ctx context.Context, taskSetInterface v1alp
 
 			patch, err := json.Marshal(map[string]interface{}{"status": wfv1.WorkflowTaskSetStatus{Nodes: nodeResults}})
 			if err != nil {
-				log.WithError(err).Error("Generating Patch Failed")
+				ae.log.WithError(err).Error("Generating Patch Failed")
 				continue
 			}
 
-			log.WithFields(log.Fields{"workflow": ae.WorkflowName}).Info("Processing Patch")
+			ae.log.Info("Processing Patch")
 
-			obj, err := taskSetInterface.Patch(ctx, ae.WorkflowName, types.MergePatchType, patch, metav1.PatchOptions{})
+			_, err = taskSetInterface.Patch(ctx, ae.WorkflowName, types.MergePatchType, patch, metav1.PatchOptions{})
 			if err != nil {
 				isTransientErr := errors.IsTransientErr(err)
-				log.WithError(err).WithFields(log.Fields{"taskset": obj, "is_transient_error": isTransientErr}).Errorf("TaskSet Patch Failed")
+				ae.log.WithError(err).
+					WithField("is_transient_error", isTransientErr).
+					Error("TaskSet Patch Failed")
 
 				// If this is not a transient error, then it's likely that the contents of the patch have caused the error.
 				// To avoid a deadlock with the workflow overall, or an infinite loop, fail and propagate the error messages
