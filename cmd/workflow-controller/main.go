@@ -47,17 +47,17 @@ func NewRootCommand() *cobra.Command {
 		executorImagePullPolicy  string // --executor-image-pull-policy
 		containerRuntimeExecutor string
 		logLevel                 string // --loglevel
-		glogLevel          int    // --gloglevel
-		logFormat          string // --log-format
-		workflowWorkers    int    // --workflow-workers
-		workflowTTLWorkers int    // --workflow-ttl-workers
-		podWorkers         int    // --pod-workers
-		podCleanupWorkers  int    // --pod-cleanup-workers
-		burst              int
-		qps                float32
-		namespaced         bool   // --namespaced
-		managedNamespace   string // --managed-namespace
-		executorPlugins    bool
+		glogLevel                int    // --gloglevel
+		logFormat                string // --log-format
+		workflowWorkers          int    // --workflow-workers
+		workflowTTLWorkers       int    // --workflow-ttl-workers
+		podWorkers               int    // --pod-workers
+		podCleanupWorkers        int    // --pod-cleanup-workers
+		burst                    int
+		qps                      float32
+		namespaced               bool   // --namespaced
+		managedNamespace         string // --managed-namespace
+		executorPlugins          bool
 	)
 
 	command := cobra.Command{
