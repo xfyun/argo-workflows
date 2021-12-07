@@ -238,7 +238,7 @@ scan-%:
 
 # generation
 plugins/%-plugin-configmap.yaml: ./dist/argo
-	./dist/argo plugin build $(dir $@)
+	./dist/argo executor-plugin build $(dir $@)
 
 .PHONY: plugins
 plugins: $(shell find plugins -name '*-configmap.yaml')
@@ -391,6 +391,7 @@ lint: server/static/files.go $(GOPATH)/bin/golangci-lint
 # for local we have a faster target that prints to stdout, does not use json, and can cache because it has no coverage
 .PHONY: test
 test: server/static/files.go dist/argosay
+	go build ./...
 	env KUBECONFIG=/dev/null $(GOTEST) ./...
 
 .PHONY: install

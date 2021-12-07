@@ -1,13 +1,13 @@
-package plugin
+package executorplugin
 
 import (
 	"github.com/spf13/cobra"
 )
 
-func NewPluginCommand() *cobra.Command {
+func NewRootCommand() *cobra.Command {
 	command := &cobra.Command{
-		Use:   "plugin",
-		Short: "manage plugins",
+		Use:   "executor-plugin",
+		Short: "manage executor plugins",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.HelpFunc()(cmd, args)
 		},

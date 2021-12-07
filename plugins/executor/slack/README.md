@@ -40,4 +40,4 @@ Install:
 
 Uninstall:
 	
-	kubectl delete cm slack-executor-plugin 
+    kubectl delete cm slack-executor-plugin 

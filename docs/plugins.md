@@ -10,7 +10,7 @@ Plugins allow you to extend Argo Workflows to add new capabilities.
 * You can get your plugin running today, no need to wait 3-5 months for review, approval, merge and an Argo software
   release.
 
-[Executor plugins](executor_plugins.md) written and installed by both users and admins.
+[Executor plugins](executor_plugins.md) can be written and installed by both users and admins.
 
 ## Configuration
 
@@ -43,5 +43,5 @@ A plugin may fail as follows:
 
 Transient errors are retried, all other errors are considered fatal.
 
-Fatal errors will result in an failed steps.
+Fatal errors will result in failed steps.
 

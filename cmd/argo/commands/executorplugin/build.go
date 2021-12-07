@@ -1,4 +1,4 @@
-package plugin
+package executorplugin
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 func NewBuildCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:          "build DIR",
-		Short:        "build plugins",
+		Short:        "build an executor plugin",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {

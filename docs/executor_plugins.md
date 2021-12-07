@@ -9,12 +9,12 @@ Tekton builds or Spark jobs.
 
 ## A Simple Python Plugin
 
-Lets make a Python plugin that prints "hello" each time the workflow is operated on.
+Let's make a Python plugin that prints "hello" each time the workflow is operated on.
 
 We need the following:
 
 1. [Plugins enabled](plugins.md) .
-2. A HTTP server that will be run as a sidecar to the main container responds to RPC HTTP requests from the executor.
+2. A HTTP server that will be run as a sidecar to the main container and will respond to RPC HTTP requests from the executor.
 3. Configuration so the controller can discover the plugin.
 
 We'll need to create a script that starts a HTTP server:
@@ -82,7 +82,7 @@ spec:
 Build and install as follows:
 
 ```shell
-argo plugin build .
+argo executor-plugin build .
 kubectl -n argo apply -f hello-executor-configmap.yaml
 ```
 

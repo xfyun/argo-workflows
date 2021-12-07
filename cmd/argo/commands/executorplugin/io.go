@@ -1,4 +1,4 @@
-package plugin
+package executorplugin
 
 import (
 	"fmt"
@@ -77,7 +77,7 @@ Install:
 
 Uninstall:
 	
-	kubectl delete cm {{.Name}}-executor-plugin 
+    kubectl delete cm {{.Name}}-executor-plugin 
 `)
 	if err != nil {
 		return "", err

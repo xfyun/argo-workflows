@@ -1,15 +1,15 @@
-## argo plugin
+## argo executor-plugin build
 
-manage plugins
+build an executor plugin
 
 ```
-argo plugin [flags]
+argo executor-plugin build DIR [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for plugin
+  -h, --help   help for build
 ```
 
 ### Options inherited from parent commands
@@ -45,6 +45,5 @@ argo plugin [flags]
 
 ### SEE ALSO
 
-* [argo](argo.md)	 - argo is the command line interface to Argo
-* [argo plugin build](argo_plugin_build.md)	 - build plugins
+* [argo executor-plugin](argo_executor-plugin.md)	 - manage executor plugins
 
