@@ -1,4 +1,5 @@
 kind: ExecutorPlugin
+apiVersion: argoproj.io/v1alpha1
 metadata:
   name: slack
   annotations:
