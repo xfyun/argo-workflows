@@ -212,7 +212,7 @@ func (ae *AgentExecutor) processTask(ctx context.Context, tmpl wfv1.Template) (*
 	case tmpl.Plugin != nil:
 		executeTemplate = ae.executePluginTemplate
 	default:
-		return nil, 0, fmt.Errorf("plugins cannot execute: unknown task type: %v", tmpl.GetType())
+		return nil, 0, fmt.Errorf("agent cannot execute: unknown task type: %v", tmpl.GetType())
 	}
 	result := &wfv1.NodeResult{}
 	requeue, err := executeTemplate(ctx, tmpl, result)
@@ -220,7 +220,6 @@ func (ae *AgentExecutor) processTask(ctx context.Context, tmpl wfv1.Template) (*
 		result.Phase = wfv1.NodeFailed
 		result.Message = err.Error()
 	}
-
 	return result, requeue, nil
 }
 
