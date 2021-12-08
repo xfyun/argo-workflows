@@ -13,7 +13,7 @@ Let's make a Python plugin that prints "hello" each time the workflow is operate
 
 We need the following:
 
-1. [Plugins enabled](plugins.md) .
+1. [Plugins enabled](plugins.md).
 2. A HTTP server that will be run as a sidecar to the main container and will respond to RPC HTTP requests from the executor.
 3. Configuration so the controller can discover the plugin.
 
