@@ -14,19 +14,23 @@ import (
 )
 
 // applyExecutionControl will ensure a pod's execution control annotation is up-to-date
-// kills any pending pods when workflow has reached it's deadline
+// kills any pending and running pods when workflow has reached it's deadline
 func (woc *wfOperationCtx) applyExecutionControl(ctx context.Context, pod *apiv1.Pod, wfNodesLock *sync.RWMutex) {
 	if pod == nil {
 		return
 	}
 
 	nodeID := woc.nodeID(pod)
-
+	node := woc.wf.Status.Nodes[nodeID]
+	//node is already completed
+	if node.Fulfilled() {
+		return
+	}
 	switch pod.Status.Phase {
 	case apiv1.PodSucceeded, apiv1.PodFailed:
 		// Skip any pod which are already completed
 		return
-	case apiv1.PodPending:
+	case apiv1.PodPending, apiv1.PodRunning:
 		// Check if we are currently shutting down
 		if woc.GetShutdownStrategy().Enabled() {
 			// Only delete pods that are not part of an onExit handler if we are "Stopping" or all pods if we are "Terminating"
@@ -72,9 +76,19 @@ func (woc *wfOperationCtx) applyExecutionControl(ctx context.Context, pod *apiv1
 // handleExecutionControlError marks a node as failed with an error message
 func (woc *wfOperationCtx) handleExecutionControlError(nodeID string, wfNodesLock *sync.RWMutex, errorMsg string) {
 	wfNodesLock.Lock()
+	defer wfNodesLock.Unlock()
+
 	node := woc.wf.Status.Nodes[nodeID]
-	wfNodesLock.Unlock()
 	woc.markNodePhase(node.Name, wfv1.NodeFailed, errorMsg)
+
+	// if node is a pod created from ContainerSet template
+	// then need to fail child nodes so they will not hang in Pending after pod deletion
+	for _, nodeID := range node.Children {
+		child := woc.wf.Status.Nodes[nodeID]
+		if !child.IsExitNode() && !child.Fulfilled() {
+			woc.markNodePhase(child.Name, wfv1.NodeFailed, errorMsg)
+		}
+	}
 }
 
 // killDaemonedChildren kill any daemoned pods of a steps or DAG template node.
@@ -84,7 +98,7 @@ func (woc *wfOperationCtx) killDaemonedChildren(nodeID string) {
 		if childNode.BoundaryID != nodeID {
 			continue
 		}
-		if childNode.Daemoned == nil || !*childNode.Daemoned {
+		if !childNode.IsDaemoned() {
 			continue
 		}
 		woc.controller.queuePodForCleanup(woc.wf.Namespace, childNode.ID, shutdownPod)

@@ -1,6 +1,6 @@
 # Container Set Template
 
-![alpha](assets/alpha.svg)
+![GA](assets/ga.svg)
 
 > v3.1 and after
 
@@ -40,14 +40,15 @@ spec:
         parameters:
           - name: message
             valueFrom:
-              path: /workpsace/message
+              path: /workspace/message
 ```
 
 There are a couple of caveats:
 
 1. You must use the [Emissary Executor](workflow-executors.md#emissary-emissary).
 2. Or all containers must run in parallel - i.e. it is a graph with no dependencies.
-3. It will use the sum total of all resource requests, maybe costing more than the same DAG template. This will be a problem if your requests already cost a lot. See below.
+3. You cannot use [enhanced depends logic](enhanced-depends-logic.md).
+4. It will use the sum total of all resource requests, maybe costing more than the same DAG template. This will be a problem if your requests already cost a lot. See below.
 
 The containers can be arranged as a graph by specifying dependencies. This is suitable for running 10s rather than 100s
 of containers.
@@ -67,7 +68,7 @@ Instead, have a workspace volume and make sure all artifacts paths are on that v
 
 ## ⚠️ Resource Requests
 
-A container set actually starts all containers, and the Emmissary only starts the main container process when the containers it depends on have completed. This mean that even though the container is doing no useful work, it is still consume resources and you're still getting billed for them.
+A container set actually starts all containers, and the Emissary only starts the main container process when the containers it depends on have completed. This mean that even though the container is doing no useful work, it is still consume resources and you're still getting billed for them.
 
 If your requests are small, this won't be a problem.
 
@@ -87,7 +88,7 @@ Then you know you need only a maximum of 2Gi. You could set as follows:
 
 The total is 2Gi, which is enough for `b`. We're all good.
 
-Example B: Diamond DAG e.g. a diamond `a -> b -> d and  a -> b -> d`, i.e. `b` and `c` run at the same time.
+Example B: Diamond DAG e.g. a diamond `a -> b -> d and  a -> c -> d`, i.e. `b` and `c` run at the same time.
 
 * `a` needs 1000 cpu
 * `b` needs 2000 cpu

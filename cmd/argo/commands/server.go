@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/utils/env"
 
 	"github.com/argoproj/argo-workflows/v3"
 	"github.com/argoproj/argo-workflows/v3/cmd/argo/commands/client"
@@ -34,6 +35,7 @@ import (
 	"github.com/argoproj/argo-workflows/v3/util/help"
 	pprofutil "github.com/argoproj/argo-workflows/v3/util/pprof"
 	tlsutils "github.com/argoproj/argo-workflows/v3/util/tls"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
 )
 
 func NewServerCommand() *cobra.Command {
@@ -43,6 +45,7 @@ func NewServerCommand() *cobra.Command {
 		port                     int
 		baseHRef                 string
 		secure                   bool
+		tlsCertificateSecretName string
 		htst                     bool
 		namespaced               bool   // --namespaced
 		managedNamespace         string // --managed-namespace
@@ -105,11 +108,26 @@ See %s`, help.ArgoServer),
 
 			var tlsConfig *tls.Config
 			if secure {
-				log.Infof("Generating Self Signed TLS Certificates for Secure Mode")
-				tlsConfig, err = tlsutils.GenerateTLSConfig()
+				tlsMinVersion, err := env.GetInt("TLS_MIN_VERSION", tls.VersionTLS12)
 				if err != nil {
 					return err
 				}
+
+				if tlsCertificateSecretName != "" {
+					log.Infof("Getting contents of Kubernetes secret %s for TLS Certificates", tlsCertificateSecretName)
+					tlsConfig, err = tlsutils.GetServerTLSConfigFromSecret(ctx, clients.Kubernetes, tlsCertificateSecretName, uint16(tlsMinVersion), namespace)
+					if err != nil {
+						return err
+					}
+					log.Infof("Successfully loaded TLS config from Kubernetes secret %s", tlsCertificateSecretName)
+				} else {
+					log.Infof("Generating Self Signed TLS Certificates for Secure Mode")
+					tlsConfig, err = tlsutils.GenerateX509KeyPairTLSConfig(uint16(tlsMinVersion))
+					if err != nil {
+						return err
+					}
+				}
+
 			} else {
 				log.Warn("You are running in insecure mode. Learn how to enable transport layer security: https://argoproj.github.io/argo-workflows/tls/")
 			}
@@ -203,7 +221,7 @@ See %s`, help.ArgoServer),
 	command.Flags().BoolVarP(&secure, "secure", "e", true, "Whether or not we should listen on TLS.")
 	command.Flags().BoolVar(&htst, "hsts", true, "Whether or not we should add a HTTP Secure Transport Security header. This only has effect if secure is enabled.")
 	command.Flags().StringArrayVar(&authModes, "auth-mode", []string{"client"}, "API server authentication mode. Any 1 or more length permutation of: client,server,sso")
-	command.Flags().StringVar(&configMap, "configmap", "workflow-controller-configmap", "Name of K8s configmap to retrieve workflow controller configuration")
+	command.Flags().StringVar(&configMap, "configmap", common.ConfigMapName, "Name of K8s configmap to retrieve workflow controller configuration")
 	command.Flags().BoolVar(&namespaced, "namespaced", false, "run as namespaced mode")
 	command.Flags().StringVar(&managedNamespace, "managed-namespace", "", "namespace that watches, default to the installation namespace")
 	command.Flags().StringVar(&ssoNamespace, "sso-namespace", "", "namespace that will be used for SSO RBAC. Defaults to installation namespace. Used only in namespaced mode")

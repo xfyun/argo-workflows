@@ -34,11 +34,6 @@ type ValidateOpts struct {
 	// input parameters to the workflow)
 	Lint bool
 
-	// ContainerRuntimeExecutor will trigger additional validation checks specific to different
-	// types of executors. For example, the inability of kubelet/k8s executors to copy artifacts
-	// out of the base image layer. If unspecified, will use docker executor validation
-	ContainerRuntimeExecutor string
-
 	// IgnoreEntrypoint indicates to skip/ignore the EntryPoint validation on workflow spec.
 	// Entrypoint is optional for WorkflowTemplate and ClusterWorkflowTemplate
 	IgnoreEntrypoint bool
@@ -190,6 +185,7 @@ func ValidateWorkflow(wftmplGetter templateresolution.WorkflowTemplateNamespaced
 	if wf.Spec.Priority != nil {
 		ctx.globalParams[common.GlobalVarWorkflowPriority] = strconv.Itoa(int(*wf.Spec.Priority))
 	}
+	ctx.globalParams[common.GlobalVarWorkflowStatus] = placeholderGenerator.NextPlaceholder()
 
 	if !opts.IgnoreEntrypoint && entrypoint == "" {
 		return nil, errors.New(errors.CodeBadRequest, "spec.entrypoint is required")
@@ -211,8 +207,6 @@ func ValidateWorkflow(wftmplGetter templateresolution.WorkflowTemplateNamespaced
 		}
 	}
 	if wf.Spec.OnExit != "" {
-		// now when validating onExit, {{workflow.status}} is now available as a global
-		ctx.globalParams[common.GlobalVarWorkflowStatus] = placeholderGenerator.NextPlaceholder()
 		ctx.globalParams[common.GlobalVarWorkflowFailures] = placeholderGenerator.NextPlaceholder()
 		_, err = ctx.validateTemplateHolder(&wfv1.WorkflowStep{Template: wf.Spec.OnExit}, tmplCtx, &wf.Spec.Arguments)
 		if err != nil {
@@ -255,7 +249,7 @@ func ValidateWorkflowTemplate(wftmplGetter templateresolution.WorkflowTemplateNa
 			Labels:      wftmpl.ObjectMeta.Labels,
 			Annotations: wftmpl.ObjectMeta.Annotations,
 		},
-		Spec: wftmpl.Spec.WorkflowSpec,
+		Spec: wftmpl.Spec,
 	}
 	opts.IgnoreEntrypoint = wf.Spec.Entrypoint == ""
 	opts.WorkflowTemplateValidation = true
@@ -273,7 +267,7 @@ func ValidateClusterWorkflowTemplate(wftmplGetter templateresolution.WorkflowTem
 			Labels:      cwftmpl.ObjectMeta.Labels,
 			Annotations: cwftmpl.ObjectMeta.Annotations,
 		},
-		Spec: cwftmpl.Spec.WorkflowSpec,
+		Spec: cwftmpl.Spec,
 	}
 	opts.IgnoreEntrypoint = wf.Spec.Entrypoint == ""
 	opts.WorkflowTemplateValidation = true
@@ -407,10 +401,6 @@ func (ctx *templateValidationCtx) validateTemplate(tmpl *wfv1.Template, tmplCtx 
 	if err != nil {
 		return err
 	}
-	err = ctx.validateBaseImageOutputs(newTmpl)
-	if err != nil {
-		return err
-	}
 	if newTmpl.ArchiveLocation != nil {
 		errPrefix := fmt.Sprintf("templates.%s.archiveLocation", newTmpl.Name)
 		err = validateArtifactLocation(errPrefix, *newTmpl.ArchiveLocation)
@@ -428,6 +418,9 @@ func (ctx *templateValidationCtx) validateTemplate(tmpl *wfv1.Template, tmplCtx 
 			}
 			if metric.Help == "" {
 				return errors.Errorf(errors.CodeBadRequest, "templates.%s metric '%s' must contain a help string under 'help: ' field", tmpl.Name, metric.Name)
+			}
+			if err := metrics.ValidateMetricValues(metric); err != nil {
+				return errors.Errorf(errors.CodeBadRequest, "templates.%s metric '%s' error: %s", tmpl.Name, metric.Name, err)
 			}
 		}
 	}
@@ -486,7 +479,7 @@ func (ctx *templateValidationCtx) validateTemplateHolder(tmplHolder wfv1.Templat
 // validateTemplateType validates that only one template type is defined
 func validateTemplateType(tmpl *wfv1.Template) error {
 	numTypes := 0
-	for _, tmplType := range []interface{}{tmpl.Container, tmpl.ContainerSet, tmpl.Steps, tmpl.Script, tmpl.Resource, tmpl.DAG, tmpl.Suspend, tmpl.Data, tmpl.HTTP} {
+	for _, tmplType := range []interface{}{tmpl.Container, tmpl.ContainerSet, tmpl.Steps, tmpl.Script, tmpl.Resource, tmpl.DAG, tmpl.Suspend, tmpl.Data, tmpl.HTTP, tmpl.Plugin} {
 		if !reflect.ValueOf(tmplType).IsNil() {
 			numTypes++
 		}
@@ -523,8 +516,9 @@ func validateInputs(tmpl *wfv1.Template) (map[string]interface{}, error) {
 		artRef := fmt.Sprintf("inputs.artifacts.%s", art.Name)
 		scope[artRef] = true
 		if tmpl.IsLeaf() {
-			if art.Path == "" {
-				return nil, errors.Errorf(errors.CodeBadRequest, "templates.%s.%s.path not specified", tmpl.Name, artRef)
+			err = art.CleanPath()
+			if err != nil {
+				return nil, errors.Errorf(errors.CodeBadRequest, "error in templates.%s.%s: %s", tmpl.Name, artRef, err.Error())
 			}
 			scope[fmt.Sprintf("inputs.artifacts.%s.path", art.Name)] = true
 		} else {
@@ -674,6 +668,7 @@ func (ctx *templateValidationCtx) validateLeaf(scope map[string]interface{}, tmp
 			return errors.Errorf(errors.CodeBadRequest, "templates.%s.script.image may not be empty", tmpl.Name)
 		}
 	}
+	// we don't validate tmpl.Plugin, because this is done by Plugin.UnmarshallJSON
 	if tmpl.ActiveDeadlineSeconds != nil {
 		if !intstr.IsValidIntOrArgoVariable(tmpl.ActiveDeadlineSeconds) && !placeholderGenerator.IsPlaceholder(tmpl.ActiveDeadlineSeconds.StrVal) {
 			return errors.Errorf(errors.CodeBadRequest, "templates.%s.activeDeadlineSeconds must be a positive integer > 0 or an argo variable", tmpl.Name)
@@ -684,21 +679,6 @@ func (ctx *templateValidationCtx) validateLeaf(scope map[string]interface{}, tmp
 	}
 	if tmpl.Parallelism != nil {
 		return errors.Errorf(errors.CodeBadRequest, "templates.%s.parallelism is only valid for steps and dag templates", tmpl.Name)
-	}
-	var automountServiceAccountToken *bool
-	if tmpl.AutomountServiceAccountToken != nil {
-		automountServiceAccountToken = tmpl.AutomountServiceAccountToken
-	} else if ctx.wf != nil && ctx.wf.Spec.AutomountServiceAccountToken != nil {
-		automountServiceAccountToken = ctx.wf.Spec.AutomountServiceAccountToken
-	}
-	executorServiceAccountName := ""
-	if tmpl.Executor != nil && tmpl.Executor.ServiceAccountName != "" {
-		executorServiceAccountName = tmpl.Executor.ServiceAccountName
-	} else if ctx.wf != nil && ctx.wf.Spec.Executor != nil && ctx.wf.Spec.Executor.ServiceAccountName != "" {
-		executorServiceAccountName = ctx.wf.Spec.Executor.ServiceAccountName
-	}
-	if automountServiceAccountToken != nil && !*automountServiceAccountToken && executorServiceAccountName == "" {
-		return errors.Errorf(errors.CodeBadRequest, "templates.%s.executor.serviceAccountName must not be empty if automountServiceAccountToken is false", tmpl.Name)
 	}
 	return nil
 }
@@ -950,8 +930,9 @@ func validateOutputs(scope map[string]interface{}, globalParams map[string]strin
 	for _, art := range tmpl.Outputs.Artifacts {
 		artRef := fmt.Sprintf("outputs.artifacts.%s", art.Name)
 		if tmpl.IsLeaf() {
-			if art.Path == "" {
-				return errors.Errorf(errors.CodeBadRequest, "templates.%s.%s.path not specified", tmpl.Name, artRef)
+			err = art.CleanPath()
+			if err != nil {
+				return errors.Errorf(errors.CodeBadRequest, "error in templates.%s.%s: %s", tmpl.Name, artRef, err.Error())
 			}
 		} else {
 			if art.Path != "" {
@@ -995,48 +976,6 @@ func validateOutputs(scope map[string]interface{}, globalParams map[string]strin
 			errs := isValidParamOrArtifactName(param.GlobalName)
 			if len(errs) > 0 {
 				return errors.Errorf(errors.CodeBadRequest, "%s.globalName: %s", paramRef, errs[0])
-			}
-		}
-	}
-	return nil
-}
-
-// validateBaseImageOutputs detects if the template contains an valid output from base image layer
-func (ctx *templateValidationCtx) validateBaseImageOutputs(tmpl *wfv1.Template) error {
-	// This validation is not applicable for DAG and Step Template types
-	if tmpl.GetType() == wfv1.TemplateTypeDAG || tmpl.GetType() == wfv1.TemplateTypeSteps {
-		return nil
-	}
-	switch ctx.ContainerRuntimeExecutor {
-	case common.ContainerRuntimeExecutorPNS:
-		// pns supports copying from the base image, but only if there is no volume mount underneath it
-		errMsg := "pns executor does not support outputs from base image layer with volume mounts. Use an emptyDir: https://argoproj.github.io/argo-workflows/empty-dir/"
-		for _, out := range tmpl.Outputs.Artifacts {
-			if common.FindOverlappingVolume(tmpl, out.Path) == nil {
-				// output is in the base image layer. need to verify there are no volume mounts under it
-				for _, volMnt := range tmpl.GetVolumeMounts() {
-					if strings.HasPrefix(volMnt.MountPath, out.Path+"/") {
-						return errors.Errorf(errors.CodeBadRequest, "templates.%s.outputs.artifacts.%s: %s", tmpl.Name, out.Name, errMsg)
-					}
-				}
-			}
-		}
-	case common.ContainerRuntimeExecutorK8sAPI, common.ContainerRuntimeExecutorKubelet:
-		// for kubelet/k8s fail validation if we detect artifact is copied from base image layer
-		errMsg := fmt.Sprintf("%s executor does not support outputs from base image layer.  Use an emptyDir: https://argoproj.github.io/argo-workflows/empty-dir/", ctx.ContainerRuntimeExecutor)
-		for _, out := range tmpl.Outputs.Artifacts {
-			if common.FindOverlappingVolume(tmpl, out.Path) == nil {
-				return errors.Errorf(errors.CodeBadRequest, "templates.%s.outputs.artifacts.%s: %s", tmpl.Name, out.Name, errMsg)
-			}
-		}
-		for _, out := range tmpl.Outputs.Parameters {
-			if out.ValueFrom == nil {
-				continue
-			}
-			if out.ValueFrom.Path != "" {
-				if common.FindOverlappingVolume(tmpl, out.ValueFrom.Path) == nil {
-					return errors.Errorf(errors.CodeBadRequest, "templates.%s.outputs.parameters.%s: %s", tmpl.Name, out.Name, errMsg)
-				}
 			}
 		}
 	}
@@ -1250,7 +1189,6 @@ func (ctx *templateValidationCtx) validateDAG(scope map[string]interface{}, tmpl
 	if err = verifyNoCycles(tmpl, dagValidationCtx); err != nil {
 		return err
 	}
-
 	err = resolveAllVariables(scope, ctx.globalParams, tmpl.DAG.Target)
 	if err != nil {
 		return errors.Errorf(errors.CodeBadRequest, "templates.%s.targets %s", tmpl.Name, err.Error())
@@ -1263,6 +1201,10 @@ func (ctx *templateValidationCtx) validateDAG(scope map[string]interface{}, tmpl
 		resolvedTmpl := resolvedTemplates[task.Name]
 		// add all tasks outputs to scope so that a nested DAGs can have outputs
 		prefix := fmt.Sprintf("tasks.%s", task.Name)
+		// add self status reference for  hooks
+		if task.Hooks != nil {
+			scope[fmt.Sprintf("%s.status", prefix)] = true
+		}
 		ctx.addOutputsToScope(resolvedTmpl, prefix, scope, false, false)
 		if task.HasExitHook() {
 			ctx.addOutputsToScope(resolvedTmpl, prefix, scope, false, false)
@@ -1283,6 +1225,12 @@ func (ctx *templateValidationCtx) validateDAG(scope map[string]interface{}, tmpl
 			aggregate := len(ancestorTask.WithItems) > 0 || ancestorTask.WithParam != ""
 			ctx.addOutputsToScope(resolvedTmpl, ancestorPrefix, taskScope, aggregate, true)
 		}
+		if i := task.Inline; i != nil {
+			for _, p := range i.Inputs.Parameters {
+				taskScope["inputs.parameters."+p.Name] = placeholderGenerator.NextPlaceholder()
+			}
+		}
+
 		err = addItemsToScope(task.WithItems, task.WithParam, task.WithSequence, taskScope)
 		if err != nil {
 			return errors.Errorf(errors.CodeBadRequest, "templates.%s.tasks.%s %s", tmpl.Name, task.Name, err.Error())
@@ -1316,6 +1264,9 @@ func validateDAGTaskArgumentDependency(arguments wfv1.Arguments, ancestry []stri
 	}
 
 	for _, param := range arguments.Parameters {
+		if param.Value == nil {
+			return errors.Errorf(errors.CodeBadRequest, "missing value for parameter '%s'", param.Name)
+		}
 		if strings.HasPrefix(param.Value.String(), "{{tasks.") {
 			// All parameter values should have been validated, so
 			// index 1 should exist.

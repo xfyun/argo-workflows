@@ -2,15 +2,12 @@ package artifacts
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
-	"os"
 	"path"
-	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -55,6 +52,10 @@ func (a *ArtifactServer) GetInputArtifact(w http.ResponseWriter, r *http.Request
 
 func (a *ArtifactServer) getArtifact(w http.ResponseWriter, r *http.Request, isInput bool) {
 	requestPath := strings.SplitN(r.URL.Path, "/", 6)
+	if len(requestPath) != 6 {
+		a.serverInternalError(errors.New("request path is not valid"), w)
+		return
+	}
 	namespace := requestPath[2]
 	workflowName := requestPath[3]
 	nodeId := requestPath[4]
@@ -62,7 +63,7 @@ func (a *ArtifactServer) getArtifact(w http.ResponseWriter, r *http.Request, isI
 
 	ctx, err := a.gateKeeping(r, types.NamespaceHolder(namespace))
 	if err != nil {
-		a.unauthorizedError(err, w)
+		a.unauthorizedError(w)
 		return
 	}
 
@@ -91,8 +92,11 @@ func (a *ArtifactServer) GetInputArtifactByUID(w http.ResponseWriter, r *http.Re
 }
 
 func (a *ArtifactServer) getArtifactByUID(w http.ResponseWriter, r *http.Request, isInput bool) {
-	requestPath := strings.SplitN(r.URL.Path, "/", 6)
-
+	requestPath := strings.SplitN(r.URL.Path, "/", 5)
+	if len(requestPath) != 5 {
+		a.serverInternalError(errors.New("request path is not valid"), w)
+		return
+	}
 	uid := requestPath[2]
 	nodeId := requestPath[3]
 	artifactName := requestPath[4]
@@ -106,14 +110,14 @@ func (a *ArtifactServer) getArtifactByUID(w http.ResponseWriter, r *http.Request
 
 	ctx, err := a.gateKeeping(r, types.NamespaceHolder(wf.GetNamespace()))
 	if err != nil {
-		a.unauthorizedError(err, w)
+		a.unauthorizedError(w)
 		return
 	}
 
 	// return 401 if the client does not have permission to get wf
 	err = a.validateAccess(ctx, wf)
 	if err != nil {
-		a.unauthorizedError(err, w)
+		a.unauthorizedError(w)
 		return
 	}
 
@@ -142,14 +146,14 @@ func (a *ArtifactServer) gateKeeping(r *http.Request, ns types.NamespacedRequest
 	return a.gatekeeper.ContextWithRequest(ctx, ns)
 }
 
-func (a *ArtifactServer) unauthorizedError(err error, w http.ResponseWriter) {
+func (a *ArtifactServer) unauthorizedError(w http.ResponseWriter) {
 	w.WriteHeader(401)
-	_, _ = w.Write([]byte(err.Error()))
 }
 
 func (a *ArtifactServer) serverInternalError(err error, w http.ResponseWriter) {
 	w.WriteHeader(500)
 	_, _ = w.Write([]byte(err.Error()))
+	log.Errorf("Artifact Server returned internal error:%v", err)
 }
 
 func (a *ArtifactServer) returnArtifact(ctx context.Context, w http.ResponseWriter, r *http.Request, wf *wfv1.Workflow, nodeId, artifactName string, isInput bool) error {
@@ -165,11 +169,7 @@ func (a *ArtifactServer) returnArtifact(ctx context.Context, w http.ResponseWrit
 		return fmt.Errorf("artifact not found")
 	}
 
-	ref, err := a.artifactRepositories.Resolve(ctx, wf.Spec.ArtifactRepositoryRef, wf.Namespace)
-	if err != nil {
-		return err
-	}
-	ar, err := a.artifactRepositories.Get(ctx, ref)
+	ar, err := a.artifactRepositories.Get(ctx, wf.Status.ArtifactRepositoryRef)
 	if err != nil {
 		return err
 	}
@@ -183,42 +183,27 @@ func (a *ArtifactServer) returnArtifact(ctx context.Context, w http.ResponseWrit
 	if err != nil {
 		return err
 	}
-	tmp, err := ioutil.TempFile("/tmp", "artifact")
-	if err != nil {
-		return err
-	}
-	tmpPath := tmp.Name()
-	defer func() { _ = os.Remove(tmpPath) }()
 
-	err = driver.Load(art, tmpPath)
-	if err != nil {
-		return err
-	}
-
-	file, err := os.Open(filepath.Clean(tmpPath))
+	stream, err := driver.OpenStream(art)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := file.Close(); err != nil {
-			log.Fatalf("Error closing file[%s]: %v", tmpPath, err)
+		if err := stream.Close(); err != nil {
+			log.Warningf("Error closing stream[%s]: %v", stream, err)
 		}
 	}()
 
-	stats, err := file.Stat()
-	if err != nil {
-		return err
-	}
-
-	contentLength := strconv.FormatInt(stats.Size(), 10)
-	log.WithFields(log.Fields{"size": contentLength}).Debug("Artifact file size")
-
 	key, _ := art.GetKey()
 	w.Header().Add("Content-Disposition", fmt.Sprintf(`filename="%s"`, path.Base(key)))
-	w.WriteHeader(200)
 
-	http.ServeContent(w, r, "", time.Time{}, file)
+	_, err = io.Copy(w, stream)
+	if err != nil {
+		return fmt.Errorf("failed to copy stream for artifact, err:%v", err)
+	}
+
+	w.WriteHeader(http.StatusOK)
 
 	return nil
 }

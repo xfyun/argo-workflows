@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	apierr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +31,7 @@ func (woc *wfOperationCtx) patchTaskSet(ctx context.Context, patch interface{}, 
 func (woc *wfOperationCtx) getDeleteTaskAndNodePatch() map[string]interface{} {
 	deletedNode := make(map[string]interface{})
 	for _, node := range woc.wf.Status.Nodes {
-		if node.Type == wfv1.NodeTypeHTTP && node.Fulfilled() {
+		if (node.Type == wfv1.NodeTypeHTTP || node.Type == wfv1.NodeTypePlugin) && node.Fulfilled() {
 			deletedNode[node.ID] = nil
 		}
 	}
@@ -46,16 +47,23 @@ func (woc *wfOperationCtx) getDeleteTaskAndNodePatch() map[string]interface{} {
 	}
 	return patch
 }
+func taskSetNode(n wfv1.NodeStatus) bool {
+	return n.Type == wfv1.NodeTypeHTTP || n.Type == wfv1.NodeTypePlugin
+}
+
+func (woc *wfOperationCtx) hasTaskSetNodes() bool {
+	return woc.wf.Status.Nodes.Any(taskSetNode)
+}
 
 func (woc *wfOperationCtx) removeCompletedTaskSetStatus(ctx context.Context) error {
-	if !woc.wf.Status.Nodes.HasHTTPNodes() {
+	if !woc.hasTaskSetNodes() {
 		return nil
 	}
 	return woc.patchTaskSet(ctx, woc.getDeleteTaskAndNodePatch(), types.MergePatchType)
 }
 
 func (woc *wfOperationCtx) completeTaskSet(ctx context.Context) error {
-	if !woc.wf.Status.Nodes.HasHTTPNodes() {
+	if !woc.hasTaskSetNodes() {
 		return nil
 	}
 	patch := woc.getDeleteTaskAndNodePatch()
@@ -76,6 +84,37 @@ func (woc *wfOperationCtx) getWorkflowTaskSet() (*wfv1.WorkflowTaskSet, error) {
 		return nil, nil
 	}
 	return taskSet.(*wfv1.WorkflowTaskSet), nil
+}
+
+func (woc *wfOperationCtx) taskSetReconciliation(ctx context.Context) {
+	if err := woc.reconcileTaskSet(ctx); err != nil {
+		woc.log.WithError(err).Error("error in workflowtaskset reconciliation")
+		return
+	}
+	if err := woc.reconcileAgentPod(ctx); err != nil {
+		woc.log.WithError(err).Error("error in agent pod reconciliation")
+		woc.markWorkflowError(ctx, err)
+		return
+	}
+}
+
+func (woc *wfOperationCtx) nodeRequiresTaskSetReconciliation(nodeName string) bool {
+	node := woc.wf.GetNodeByName(nodeName)
+	if node == nil {
+		return false
+	}
+	// If this node is of type HTTP, it will need an HTTP reconciliation
+	if taskSetNode(*node) {
+		return true
+	}
+	for _, child := range node.Children {
+		// If any of the node's children need an HTTP reconciliation, the parent node will also need one
+		if woc.nodeRequiresTaskSetReconciliation(child) {
+			return true
+		}
+	}
+	// If neither of the children need one -- or if there are no children -- no HTTP reconciliation is needed.
+	return false
 }
 
 func (woc *wfOperationCtx) reconcileTaskSet(ctx context.Context) error {
@@ -135,6 +174,11 @@ func (woc *wfOperationCtx) createTaskSet(ctx context.Context) error {
 	if apierr.IsConflict(err) || apierr.IsAlreadyExists(err) {
 		woc.log.Debug("patching the exiting taskset")
 		spec := map[string]interface{}{
+			"metadata": metav1.ObjectMeta{
+				Labels: map[string]string{
+					common.LabelKeyCompleted: strconv.FormatBool(woc.wf.Status.Fulfilled()),
+				},
+			},
 			"spec": wfv1.WorkflowTaskSetSpec{Tasks: woc.taskSet},
 		}
 		// patch the new templates into taskset

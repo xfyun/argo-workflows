@@ -3,25 +3,28 @@ name: Regression report
 about: Create a regression report. Not for support requests.
 labels: ['bug', 'regression', 'triage']
 ---
+## Checklist
+
+<!-- Do NOT open an issue until you have: --> 
+
+* [ ] Double-checked my configuration.
+* [ ] Tested using the latest version.
+* [ ] Used the Emissary executor.
+
 ## Summary
 
 What happened/what you expected to happen?
 
-What version is it broken in?
+What version are you running?
 
-What version was it working in?
 
 ## Diagnostics
 
-Either a workflow that reproduces the bug, or paste you whole workflow YAML, including status, something like:
+Paste the smallest workflow that reproduces the bug. We must be able to run the workflow.
 
 ```yaml
-kubectl get wf -o yaml ${workflow}
+
 ```
-
-What Kubernetes provider are you using?
-
-What executor are you running? Docker/K8SAPI/Kubelet/PNS/Emissary
 
 ```bash
 # Logs from the workflow controller:

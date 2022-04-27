@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/argoproj/pkg/errors"
 	"github.com/argoproj/pkg/json"
 	"github.com/spf13/cobra"
 
@@ -24,8 +25,9 @@ type cliCreateOpts struct {
 
 func NewCreateCommand() *cobra.Command {
 	var (
-		cliCreateOpts cliCreateOpts
-		submitOpts    wfv1.SubmitOpts
+		cliCreateOpts  cliCreateOpts
+		submitOpts     wfv1.SubmitOpts
+		parametersFile string
 	)
 	command := &cobra.Command{
 		Use:   "create FILE1 FILE2...",
@@ -36,11 +38,16 @@ func NewCreateCommand() *cobra.Command {
 				os.Exit(1)
 			}
 
+			if parametersFile != "" {
+				err := util.ReadParametersFile(parametersFile, &submitOpts)
+				errors.CheckError(err)
+			}
+
 			CreateCronWorkflows(cmd.Context(), args, &cliCreateOpts, &submitOpts)
 		},
 	}
 
-	util.PopulateSubmitOpts(command, &submitOpts, false)
+	util.PopulateSubmitOpts(command, &submitOpts, &parametersFile, false)
 	command.Flags().StringVarP(&cliCreateOpts.output, "output", "o", "", "Output format. One of: name|json|yaml|wide")
 	command.Flags().BoolVar(&cliCreateOpts.strict, "strict", true, "perform strict workflow validation")
 	command.Flags().StringVar(&cliCreateOpts.schedule, "schedule", "", "override cron workflow schedule")
@@ -101,7 +108,7 @@ func CreateCronWorkflows(ctx context.Context, filePaths []string, cliOpts *cliCr
 			CronWorkflow: &cronWf,
 		})
 		if err != nil {
-			log.Fatalf("Failed to create workflow template: %v", err)
+			log.Fatalf("Failed to create cron workflow: %v", err)
 		}
 		fmt.Print(getCronWorkflowGet(created))
 	}
@@ -122,6 +129,6 @@ func unmarshalCronWorkflows(wfBytes []byte, strict bool) []wfv1.CronWorkflow {
 	if err == nil {
 		return yamlWfs
 	}
-	log.Fatalf("Failed to parse workflow template: %v", err)
+	log.Fatalf("Failed to parse cron workflow: %v", err)
 	return nil
 }

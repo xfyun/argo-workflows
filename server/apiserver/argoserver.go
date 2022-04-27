@@ -19,6 +19,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -39,6 +40,7 @@ import (
 	workflowarchivepkg "github.com/argoproj/argo-workflows/v3/pkg/apiclient/workflowarchive"
 	workflowtemplatepkg "github.com/argoproj/argo-workflows/v3/pkg/apiclient/workflowtemplate"
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/server/apiserver/accesslog"
 	"github.com/argoproj/argo-workflows/v3/server/artifacts"
 	"github.com/argoproj/argo-workflows/v3/server/auth"
 	"github.com/argoproj/argo-workflows/v3/server/auth/sso"
@@ -122,7 +124,7 @@ func getResourceCacheNamespace(opts ArgoServerOpts) string {
 }
 
 func NewArgoServer(ctx context.Context, opts ArgoServerOpts) (*argoServer, error) {
-	configController := config.NewController(opts.Namespace, opts.ConfigName, opts.Clients.Kubernetes, emptyConfigFunc)
+	configController := config.NewController(opts.Namespace, opts.ConfigName, opts.Clients.Kubernetes)
 	var resourceCache *cache.ResourceCache = nil
 	ssoIf := sso.NullSSO
 	if opts.AuthModes[auth.SSO] {
@@ -130,7 +132,7 @@ func NewArgoServer(ctx context.Context, opts ArgoServerOpts) (*argoServer, error
 		if err != nil {
 			return nil, err
 		}
-		ssoIf, err = sso.New(c.(*Config).SSO, opts.Clients.Kubernetes.CoreV1().Secrets(opts.Namespace), opts.BaseHRef, opts.TLSConfig != nil)
+		ssoIf, err = sso.New(c.SSO, opts.Clients.Kubernetes.CoreV1().Secrets(opts.Namespace), opts.BaseHRef, opts.TLSConfig != nil)
 		if err != nil {
 			return nil, err
 		}
@@ -171,11 +173,10 @@ var backoff = wait.Backoff{
 }
 
 func (as *argoServer) Run(ctx context.Context, port int, browserOpenFunc func(string)) {
-	v, err := as.configController.Get(ctx)
+	config, err := as.configController.Get(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	config := v.(*Config)
 	log.WithFields(log.Fields{"version": argo.GetVersion().Version, "instanceID": config.InstanceID}).Info("Starting Argo Server")
 	instanceIDService := instanceid.NewService(config.InstanceID)
 	offloadRepo := sqldb.ExplosiveOffloadNodeStatusRepo
@@ -200,7 +201,7 @@ func (as *argoServer) Run(ctx context.Context, port int, browserOpenFunc func(st
 	artifactRepositories := artifactrepositories.New(as.clients.Kubernetes, as.managedNamespace, &config.ArtifactRepository)
 	artifactServer := artifacts.NewArtifactServer(as.gatekeeper, hydrator.New(offloadRepo), wfArchive, instanceIDService, artifactRepositories)
 	eventServer := event.NewController(instanceIDService, eventRecorderManager, as.eventQueueSize, as.eventWorkerCount, as.eventAsyncDispatch)
-	grpcServer := as.newGRPCServer(instanceIDService, offloadRepo, wfArchive, eventServer, config.Links)
+	grpcServer := as.newGRPCServer(instanceIDService, offloadRepo, wfArchive, eventServer, config.Links, config.NavColor)
 	httpServer := as.newHTTPServer(ctx, port, artifactServer)
 
 	// Start listener
@@ -229,7 +230,6 @@ func (as *argoServer) Run(ctx context.Context, port int, browserOpenFunc func(st
 	httpL := tcpm.Match(cmux.HTTP1Fast())
 	grpcL := tcpm.Match(cmux.Any())
 
-	go as.configController.Run(as.stopCh, as.restartOnConfigChange)
 	go eventServer.Run(as.stopCh)
 	go func() { as.checkServeErr("grpcServer", grpcServer.Serve(grpcL)) }()
 	go func() { as.checkServeErr("httpServer", httpServer.Serve(httpL)) }()
@@ -247,7 +247,7 @@ func (as *argoServer) Run(ctx context.Context, port int, browserOpenFunc func(st
 	<-as.stopCh
 }
 
-func (as *argoServer) newGRPCServer(instanceIDService instanceid.Service, offloadNodeStatusRepo sqldb.OffloadNodeStatusRepo, wfArchive sqldb.WorkflowArchive, eventServer *event.Controller, links []*v1alpha1.Link) *grpc.Server {
+func (as *argoServer) newGRPCServer(instanceIDService instanceid.Service, offloadNodeStatusRepo sqldb.OffloadNodeStatusRepo, wfArchive sqldb.WorkflowArchive, eventServer *event.Controller, links []*v1alpha1.Link, navColor string) *grpc.Server {
 	serverLog := log.NewEntry(log.StandardLogger())
 
 	// "Prometheus histograms are a great way to measure latency distributions of your RPCs. However, since it is bad practice to have metrics of high cardinality the latency monitoring metrics are disabled by default. To enable them please call the following in your server initialization code:"
@@ -278,7 +278,7 @@ func (as *argoServer) newGRPCServer(instanceIDService instanceid.Service, offloa
 
 	grpcServer := grpc.NewServer(sOpts...)
 
-	infopkg.RegisterInfoServiceServer(grpcServer, info.NewInfoServer(as.managedNamespace, links))
+	infopkg.RegisterInfoServiceServer(grpcServer, info.NewInfoServer(as.managedNamespace, links, navColor))
 	eventpkg.RegisterEventServiceServer(grpcServer, eventServer)
 	eventsourcepkg.RegisterEventSourceServiceServer(grpcServer, eventsource.NewEventSourceServer())
 	pipelinepkg.RegisterPipelineServiceServer(grpcServer, pipeline.NewPipelineServer())
@@ -300,7 +300,7 @@ func (as *argoServer) newHTTPServer(ctx context.Context, port int, artifactServe
 	mux := http.NewServeMux()
 	httpServer := http.Server{
 		Addr:      endpoint,
-		Handler:   mux,
+		Handler:   accesslog.Interceptor(mux),
 		TLSConfig: as.tlsConfig,
 	}
 	dialOpts := []grpc.DialOption{
@@ -309,7 +309,7 @@ func (as *argoServer) newHTTPServer(ctx context.Context, port int, artifactServe
 	if as.tlsConfig != nil {
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(as.tlsConfig)))
 	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	webhookInterceptor := webhook.Interceptor(as.clients.Kubernetes)
@@ -336,7 +336,11 @@ func (as *argoServer) newHTTPServer(ctx context.Context, port int, artifactServe
 	mustRegisterGWHandler(workflowarchivepkg.RegisterArchivedWorkflowServiceHandlerFromEndpoint, ctx, gwmux, endpoint, dialOpts)
 	mustRegisterGWHandler(clusterwftemplatepkg.RegisterClusterWorkflowTemplateServiceHandlerFromEndpoint, ctx, gwmux, endpoint, dialOpts)
 
-	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { webhookInterceptor(w, r, gwmux) })
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		// we must delete this header for API request to prevent "stream terminated by RST_STREAM with error code: PROTOCOL_ERROR" error
+		r.Header.Del("Connection")
+		webhookInterceptor(w, r, gwmux)
+	})
 	mux.HandleFunc("/artifacts/", artifactServer.GetOutputArtifact)
 	mux.HandleFunc("/input-artifacts/", artifactServer.GetInputArtifact)
 	mux.HandleFunc("/artifacts-by-uid/", artifactServer.GetOutputArtifactByUID)
@@ -369,15 +373,6 @@ func mustRegisterGWHandler(register registerFunc, ctx context.Context, mux *runt
 	if err != nil {
 		panic(err)
 	}
-}
-
-// Unlike the controller, the server creates object based on the config map at init time, and will not pick-up on
-// changes unless we restart.
-// Instead of opting to re-write the server, instead we'll just listen for any old change and restart.
-func (as *argoServer) restartOnConfigChange(interface{}) error {
-	log.Info("config map event, exiting gracefully")
-	as.stopCh <- struct{}{}
-	return nil
 }
 
 // checkServeErr checks the error from a .Serve() call to decide if it was a graceful shutdown

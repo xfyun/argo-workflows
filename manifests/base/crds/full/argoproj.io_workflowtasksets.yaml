@@ -443,6 +443,8 @@ spec:
                           type: object
                         git:
                           properties:
+                            branch:
+                              type: string
                             depth:
                               format: int64
                               type: integer
@@ -469,6 +471,8 @@ spec:
                               type: string
                             revision:
                               type: string
+                            singleBranch:
+                              type: boolean
                             sshPrivateKeySecret:
                               properties:
                                 key:
@@ -562,8 +566,30 @@ spec:
                                 - value
                                 type: object
                               type: array
+                            passwordSecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
                             url:
                               type: string
+                            usernameSecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
                           required:
                           - url
                           type: object
@@ -684,6 +710,15 @@ spec:
                             useSDKCreds:
                               type: boolean
                           type: object
+                      type: object
+                    artifactGC:
+                      properties:
+                        strategy:
+                          enum:
+                          - ""
+                          - OnWorkflowCompletion
+                          - OnWorkflowDeletion
+                          type: string
                       type: object
                     automountServiceAccountToken:
                       type: boolean
@@ -897,6 +932,16 @@ spec:
                             failureThreshold:
                               format: int32
                               type: integer
+                            grpc:
+                              properties:
+                                port:
+                                  format: int32
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              type: object
                             httpGet:
                               properties:
                                 host:
@@ -991,6 +1036,16 @@ spec:
                             failureThreshold:
                               format: int32
                               type: integer
+                            grpc:
+                              properties:
+                                port:
+                                  format: int32
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              type: object
                             httpGet:
                               properties:
                                 host:
@@ -1121,6 +1176,8 @@ spec:
                                   type: string
                                 gmsaCredentialSpecName:
                                   type: string
+                                hostProcess:
+                                  type: boolean
                                 runAsUserName:
                                   type: string
                               type: object
@@ -1137,6 +1194,16 @@ spec:
                             failureThreshold:
                               format: int32
                               type: integer
+                            grpc:
+                              properties:
+                                port:
+                                  format: int32
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              type: object
                             httpGet:
                               properties:
                                 host:
@@ -1457,6 +1524,16 @@ spec:
                                   failureThreshold:
                                     format: int32
                                     type: integer
+                                  grpc:
+                                    properties:
+                                      port:
+                                        format: int32
+                                        type: integer
+                                      service:
+                                        type: string
+                                    required:
+                                    - port
+                                    type: object
                                   httpGet:
                                     properties:
                                       host:
@@ -1551,6 +1628,16 @@ spec:
                                   failureThreshold:
                                     format: int32
                                     type: integer
+                                  grpc:
+                                    properties:
+                                      port:
+                                        format: int32
+                                        type: integer
+                                      service:
+                                        type: string
+                                    required:
+                                    - port
+                                    type: object
                                   httpGet:
                                     properties:
                                       host:
@@ -1681,6 +1768,8 @@ spec:
                                         type: string
                                       gmsaCredentialSpecName:
                                         type: string
+                                      hostProcess:
+                                        type: boolean
                                       runAsUserName:
                                         type: string
                                     type: object
@@ -1697,6 +1786,16 @@ spec:
                                   failureThreshold:
                                     format: int32
                                     type: integer
+                                  grpc:
+                                    properties:
+                                      port:
+                                        format: int32
+                                        type: integer
+                                      service:
+                                        type: string
+                                    required:
+                                    - port
+                                    type: object
                                   httpGet:
                                     properties:
                                       host:
@@ -1801,6 +1900,18 @@ spec:
                             - name
                             type: object
                           type: array
+                        retryStrategy:
+                          properties:
+                            duration:
+                              type: string
+                            retries:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - retries
+                          type: object
                         volumeMounts:
                           items:
                             properties:
@@ -1910,6 +2021,8 @@ spec:
                                           type: object
                                         git:
                                           properties:
+                                            branch:
+                                              type: string
                                             depth:
                                               format: int64
                                               type: integer
@@ -1936,6 +2049,8 @@ spec:
                                               type: string
                                             revision:
                                               type: string
+                                            singleBranch:
+                                              type: boolean
                                             sshPrivateKeySecret:
                                               properties:
                                                 key:
@@ -2031,8 +2146,30 @@ spec:
                                                 - value
                                                 type: object
                                               type: array
+                                            passwordSecret:
+                                              properties:
+                                                key:
+                                                  type: string
+                                                name:
+                                                  type: string
+                                                optional:
+                                                  type: boolean
+                                              required:
+                                              - key
+                                              type: object
                                             url:
                                               type: string
+                                            usernameSecret:
+                                              properties:
+                                                key:
+                                                  type: string
+                                                name:
+                                                  type: string
+                                                optional:
+                                                  type: boolean
+                                              required:
+                                              - key
+                                              type: object
                                           required:
                                           - url
                                           type: object
@@ -2313,6 +2450,8 @@ spec:
                                                 type: object
                                               git:
                                                 properties:
+                                                  branch:
+                                                    type: string
                                                   depth:
                                                     format: int64
                                                     type: integer
@@ -2339,6 +2478,8 @@ spec:
                                                     type: string
                                                   revision:
                                                     type: string
+                                                  singleBranch:
+                                                    type: boolean
                                                   sshPrivateKeySecret:
                                                     properties:
                                                       key:
@@ -2434,8 +2575,30 @@ spec:
                                                       - value
                                                       type: object
                                                     type: array
+                                                  passwordSecret:
+                                                    properties:
+                                                      key:
+                                                        type: string
+                                                      name:
+                                                        type: string
+                                                      optional:
+                                                        type: boolean
+                                                    required:
+                                                    - key
+                                                    type: object
                                                   url:
                                                     type: string
+                                                  usernameSecret:
+                                                    properties:
+                                                      key:
+                                                        type: string
+                                                      name:
+                                                        type: string
+                                                      optional:
+                                                        type: boolean
+                                                    required:
+                                                    - key
+                                                    type: object
                                                 required:
                                                 - url
                                                 type: object
@@ -2625,8 +2788,19 @@ spec:
                                             type: object
                                           type: array
                                       type: object
+                                    expression:
+                                      type: string
                                     template:
                                       type: string
+                                    templateRef:
+                                      properties:
+                                        clusterScope:
+                                          type: boolean
+                                        name:
+                                          type: string
+                                        template:
+                                          type: string
+                                      type: object
                                   required:
                                   - template
                                   type: object
@@ -2758,6 +2932,8 @@ spec:
                                   type: object
                                 git:
                                   properties:
+                                    branch:
+                                      type: string
                                     depth:
                                       format: int64
                                       type: integer
@@ -2784,6 +2960,8 @@ spec:
                                       type: string
                                     revision:
                                       type: string
+                                    singleBranch:
+                                      type: boolean
                                     sshPrivateKeySecret:
                                       properties:
                                         key:
@@ -2879,8 +3057,30 @@ spec:
                                         - value
                                         type: object
                                       type: array
+                                    passwordSecret:
+                                      properties:
+                                        key:
+                                          type: string
+                                        name:
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
                                     url:
                                       type: string
+                                    usernameSecret:
+                                      properties:
+                                        key:
+                                          type: string
+                                        name:
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
                                   required:
                                   - url
                                   type: object
@@ -3078,6 +3278,8 @@ spec:
                             - name
                             type: object
                           type: array
+                        insecureSkipVerify:
+                          type: boolean
                         method:
                           type: string
                         successCondition:
@@ -3301,6 +3503,16 @@ spec:
                               failureThreshold:
                                 format: int32
                                 type: integer
+                              grpc:
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                  service:
+                                    type: string
+                                required:
+                                - port
+                                type: object
                               httpGet:
                                 properties:
                                   host:
@@ -3397,6 +3609,16 @@ spec:
                               failureThreshold:
                                 format: int32
                                 type: integer
+                              grpc:
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                  service:
+                                    type: string
+                                required:
+                                - port
+                                type: object
                               httpGet:
                                 properties:
                                   host:
@@ -3527,6 +3749,8 @@ spec:
                                     type: string
                                   gmsaCredentialSpecName:
                                     type: string
+                                  hostProcess:
+                                    type: boolean
                                   runAsUserName:
                                     type: string
                                 type: object
@@ -3543,6 +3767,16 @@ spec:
                               failureThreshold:
                                 format: int32
                                 type: integer
+                              grpc:
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                  service:
+                                    type: string
+                                required:
+                                - port
+                                type: object
                               httpGet:
                                 properties:
                                   host:
@@ -3722,6 +3956,8 @@ spec:
                                 type: object
                               git:
                                 properties:
+                                  branch:
+                                    type: string
                                   depth:
                                     format: int64
                                     type: integer
@@ -3748,6 +3984,8 @@ spec:
                                     type: string
                                   revision:
                                     type: string
+                                  singleBranch:
+                                    type: boolean
                                   sshPrivateKeySecret:
                                     properties:
                                       key:
@@ -3843,8 +4081,30 @@ spec:
                                       - value
                                       type: object
                                     type: array
+                                  passwordSecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
                                   url:
                                     type: string
+                                  usernameSecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
                                 required:
                                 - url
                                 type: object
@@ -4213,6 +4473,8 @@ spec:
                                 type: object
                               git:
                                 properties:
+                                  branch:
+                                    type: string
                                   depth:
                                     format: int64
                                     type: integer
@@ -4239,6 +4501,8 @@ spec:
                                     type: string
                                   revision:
                                     type: string
+                                  singleBranch:
+                                    type: boolean
                                   sshPrivateKeySecret:
                                     properties:
                                       key:
@@ -4334,8 +4598,30 @@ spec:
                                       - value
                                       type: object
                                     type: array
+                                  passwordSecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
                                   url:
                                     type: string
+                                  usernameSecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
                                 required:
                                 - url
                                 type: object
@@ -4532,6 +4818,8 @@ spec:
                     parallelism:
                       format: int64
                       type: integer
+                    plugin:
+                      type: object
                     podSpecPatch:
                       type: string
                     priority:
@@ -4801,6 +5089,16 @@ spec:
                             failureThreshold:
                               format: int32
                               type: integer
+                            grpc:
+                              properties:
+                                port:
+                                  format: int32
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              type: object
                             httpGet:
                               properties:
                                 host:
@@ -4895,6 +5193,16 @@ spec:
                             failureThreshold:
                               format: int32
                               type: integer
+                            grpc:
+                              properties:
+                                port:
+                                  format: int32
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              type: object
                             httpGet:
                               properties:
                                 host:
@@ -5025,6 +5333,8 @@ spec:
                                   type: string
                                 gmsaCredentialSpecName:
                                   type: string
+                                hostProcess:
+                                  type: boolean
                                 runAsUserName:
                                   type: string
                               type: object
@@ -5043,6 +5353,16 @@ spec:
                             failureThreshold:
                               format: int32
                               type: integer
+                            grpc:
+                              properties:
+                                port:
+                                  format: int32
+                                  type: integer
+                                service:
+                                  type: string
+                              required:
+                              - port
+                              type: object
                             httpGet:
                               properties:
                                 host:
@@ -5205,6 +5525,8 @@ spec:
                               type: string
                             gmsaCredentialSpecName:
                               type: string
+                            hostProcess:
+                              type: boolean
                             runAsUserName:
                               type: string
                           type: object
@@ -5422,6 +5744,16 @@ spec:
                               failureThreshold:
                                 format: int32
                                 type: integer
+                              grpc:
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                  service:
+                                    type: string
+                                required:
+                                - port
+                                type: object
                               httpGet:
                                 properties:
                                   host:
@@ -5518,6 +5850,16 @@ spec:
                               failureThreshold:
                                 format: int32
                                 type: integer
+                              grpc:
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                  service:
+                                    type: string
+                                required:
+                                - port
+                                type: object
                               httpGet:
                                 properties:
                                   host:
@@ -5648,6 +5990,8 @@ spec:
                                     type: string
                                   gmsaCredentialSpecName:
                                     type: string
+                                  hostProcess:
+                                    type: boolean
                                   runAsUserName:
                                     type: string
                                 type: object
@@ -5664,6 +6008,16 @@ spec:
                               failureThreshold:
                                 format: int32
                                 type: integer
+                              grpc:
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                  service:
+                                    type: string
+                                required:
+                                - port
+                                type: object
                               httpGet:
                                 properties:
                                   host:
@@ -6013,6 +6367,18 @@ spec:
                                           type: string
                                         type: array
                                       dataSource:
+                                        properties:
+                                          apiGroup:
+                                            type: string
+                                          kind:
+                                            type: string
+                                          name:
+                                            type: string
+                                        required:
+                                        - kind
+                                        - name
+                                        type: object
+                                      dataSourceRef:
                                         properties:
                                           apiGroup:
                                             type: string
@@ -6570,6 +6936,8 @@ spec:
                                 type: object
                               git:
                                 properties:
+                                  branch:
+                                    type: string
                                   depth:
                                     format: int64
                                     type: integer
@@ -6596,6 +6964,8 @@ spec:
                                     type: string
                                   revision:
                                     type: string
+                                  singleBranch:
+                                    type: boolean
                                   sshPrivateKeySecret:
                                     properties:
                                       key:
@@ -6691,8 +7061,30 @@ spec:
                                       - value
                                       type: object
                                     type: array
+                                  passwordSecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
                                   url:
                                     type: string
+                                  usernameSecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
                                 required:
                                 - url
                                 type: object
@@ -6888,6 +7280,8 @@ spec:
                       type: object
                     phase:
                       type: string
+                    progress:
+                      type: string
                   type: object
                 type: object
             type: object
@@ -6897,3 +7291,5 @@ spec:
         type: object
     served: true
     storage: true
+    subresources:
+      status: {}

@@ -3,6 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,14 +15,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	runtimeutil "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/pointer"
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	workflow "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
 	"github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
+	executorplugins "github.com/argoproj/argo-workflows/v3/pkg/plugins/executor"
 	"github.com/argoproj/argo-workflows/v3/util"
 	"github.com/argoproj/argo-workflows/v3/util/env"
 	"github.com/argoproj/argo-workflows/v3/util/errors"
@@ -37,9 +41,12 @@ type AgentExecutor struct {
 	RESTClient        rest.Interface
 	Namespace         string
 	consideredTasks   map[string]bool
+	plugins           []executorplugins.TemplateExecutor
 }
 
-func NewAgentExecutor(clientSet kubernetes.Interface, restClient rest.Interface, config *rest.Config, namespace, workflowName string) *AgentExecutor {
+type templateExecutor = func(ctx context.Context, tmpl wfv1.Template, result *wfv1.NodeResult) (time.Duration, error)
+
+func NewAgentExecutor(clientSet kubernetes.Interface, restClient rest.Interface, config *rest.Config, namespace, workflowName string, plugins []executorplugins.TemplateExecutor) *AgentExecutor {
 	return &AgentExecutor{
 		log:               log.WithField("workflow", workflowName),
 		ClientSet:         clientSet,
@@ -48,6 +55,7 @@ func NewAgentExecutor(clientSet kubernetes.Interface, restClient rest.Interface,
 		WorkflowName:      workflowName,
 		WorkflowInterface: workflow.NewForConfigOrDie(config),
 		consideredTasks:   make(map[string]bool),
+		plugins:           plugins,
 	}
 }
 
@@ -108,7 +116,11 @@ func (ae *AgentExecutor) Agent(ctx context.Context) error {
 }
 
 func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, responseQueue chan response) {
-	for task := range taskQueue {
+	for {
+		task, ok := <-taskQueue
+		if !ok {
+			break
+		}
 		nodeID, tmpl := task.NodeId, task.Template
 		log := log.WithField("nodeID", nodeID)
 
@@ -122,7 +134,7 @@ func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, re
 		ae.consideredTasks[nodeID] = true
 
 		log.Info("Processing task")
-		result, err := ae.processTask(ctx, tmpl)
+		result, requeue, err := ae.processTask(ctx, tmpl)
 		if err != nil {
 			log.WithError(err).Error("Error in agent task")
 			result = &wfv1.NodeResult{
@@ -132,15 +144,27 @@ func (ae *AgentExecutor) taskWorker(ctx context.Context, taskQueue chan task, re
 			// Do not return or continue here, the "errored" result still needs to be propagated to the responseQueue below
 		}
 
-		log.WithField("phase", result.Phase).
+		log.
+			WithField("phase", result.Phase).
 			WithField("message", result.Message).
+			WithField("requeue", requeue).
 			Info("Sending result")
-		responseQueue <- response{NodeId: nodeID, Result: result}
+
+		if result.Phase != "" {
+			responseQueue <- response{NodeId: nodeID, Result: result}
+		}
+		if requeue > 0 {
+			time.AfterFunc(requeue, func() {
+				delete(ae.consideredTasks, nodeID)
+				taskQueue <- task
+			})
+		}
 	}
 }
 
 func (ae *AgentExecutor) patchWorker(ctx context.Context, taskSetInterface v1alpha1.WorkflowTaskSetInterface, responseQueue chan response, requeueTime time.Duration) {
 	ticker := time.NewTicker(requeueTime)
+	defer ticker.Stop()
 	nodeResults := map[string]wfv1.NodeResult{}
 	for {
 		select {
@@ -159,23 +183,29 @@ func (ae *AgentExecutor) patchWorker(ctx context.Context, taskSetInterface v1alp
 
 			ae.log.Info("Processing Patch")
 
-			_, err = taskSetInterface.Patch(ctx, ae.WorkflowName, types.MergePatchType, patch, metav1.PatchOptions{})
-			if err != nil {
-				isTransientErr := errors.IsTransientErr(err)
+			err = retry.OnError(wait.Backoff{
+				Duration: time.Second,
+				Factor:   2,
+				Jitter:   0.1,
+				Steps:    5,
+				Cap:      30 * time.Second,
+			}, errors.IsTransientErr, func() error {
+				_, err := taskSetInterface.Patch(ctx, ae.WorkflowName, types.MergePatchType, patch, metav1.PatchOptions{}, "status")
+				return err
+			})
+
+			if err != nil && !errors.IsTransientErr(err) {
 				ae.log.WithError(err).
-					WithField("is_transient_error", isTransientErr).
 					Error("TaskSet Patch Failed")
 
 				// If this is not a transient error, then it's likely that the contents of the patch have caused the error.
 				// To avoid a deadlock with the workflow overall, or an infinite loop, fail and propagate the error messages
 				// to the nodes.
 				// If this is a transient error, then simply do nothing and another patch will be retried in the next tick.
-				if !isTransientErr {
-					for node := range nodeResults {
-						nodeResults[node] = wfv1.NodeResult{
-							Phase:   wfv1.NodeError,
-							Message: fmt.Sprintf("HTTP request completed successfully but an error occurred when patching its result: %s", err),
-						}
+				for node := range nodeResults {
+					nodeResults[node] = wfv1.NodeResult{
+						Phase:   wfv1.NodeError,
+						Message: fmt.Sprintf("HTTP request completed successfully but an error occurred when patching its result: %s", err),
 					}
 				}
 				continue
@@ -184,39 +214,44 @@ func (ae *AgentExecutor) patchWorker(ctx context.Context, taskSetInterface v1alp
 			// Patch was successful, clear nodeResults for next iteration
 			nodeResults = map[string]wfv1.NodeResult{}
 
-			ae.log.Info("Patched TaskSet")
+			log.Info("Patched TaskSet")
 		}
 	}
 }
 
-func (ae *AgentExecutor) processTask(ctx context.Context, tmpl wfv1.Template) (*wfv1.NodeResult, error) {
+func (ae *AgentExecutor) processTask(ctx context.Context, tmpl wfv1.Template) (*wfv1.NodeResult, time.Duration, error) {
+	var executeTemplate templateExecutor
 	switch {
 	case tmpl.HTTP != nil:
-		return ae.executeHTTPTemplate(ctx, tmpl), nil
+		executeTemplate = ae.executeHTTPTemplate
+	case tmpl.Plugin != nil:
+		executeTemplate = ae.executePluginTemplate
 	default:
-		return nil, fmt.Errorf("agent cannot execute: unknown task type")
+		return nil, 0, fmt.Errorf("agent cannot execute: unknown task type: %v", tmpl.GetType())
 	}
+	result := &wfv1.NodeResult{}
+	requeue, err := executeTemplate(ctx, tmpl, result)
+	if err != nil {
+		result.Phase = wfv1.NodeFailed
+		result.Message = err.Error()
+	}
+	return result, requeue, nil
 }
 
-func (ae *AgentExecutor) executeHTTPTemplate(ctx context.Context, tmpl wfv1.Template) *wfv1.NodeResult {
+func (ae *AgentExecutor) executeHTTPTemplate(ctx context.Context, tmpl wfv1.Template, result *wfv1.NodeResult) (time.Duration, error) {
 	if tmpl.HTTP == nil {
-		return nil
+		return 0, nil
 	}
 
-	var result wfv1.NodeResult
 	response, err := ae.executeHTTPTemplateRequest(ctx, tmpl.HTTP)
 	if err != nil {
-		result.Phase = wfv1.NodeError
-		result.Message = err.Error()
-		return &result
+		return 0, err
 	}
 	defer response.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		result.Phase = wfv1.NodeError
-		result.Message = err.Error()
-		return &result
+		return 0, err
 	}
 
 	outputs := wfv1.Outputs{Result: pointer.StringPtr(string(bodyBytes))}
@@ -245,9 +280,7 @@ func (ae *AgentExecutor) executeHTTPTemplate(ctx context.Context, tmpl wfv1.Temp
 		}
 		success, err := argoexpr.EvalBool(tmpl.HTTP.SuccessCondition, evalScope)
 		if err != nil {
-			result.Phase = wfv1.NodeError
-			result.Message = err.Error()
-			return &result
+			return 0, err
 		}
 		if !success {
 			phase = wfv1.NodeFailed
@@ -258,7 +291,18 @@ func (ae *AgentExecutor) executeHTTPTemplate(ctx context.Context, tmpl wfv1.Temp
 	result.Phase = phase
 	result.Message = message
 	result.Outputs = &outputs
-	return &result
+	return 0, nil
+}
+
+var httpClientSkip *http.Client = &http.Client{
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	},
+}
+
+var httpClients = map[bool]*http.Client{
+	false: http.DefaultClient,
+	true:  httpClientSkip,
 }
 
 func (ae *AgentExecutor) executeHTTPTemplateRequest(ctx context.Context, httpTemplate *wfv1.HTTP) (*http.Response, error) {
@@ -266,7 +310,14 @@ func (ae *AgentExecutor) executeHTTPTemplateRequest(ctx context.Context, httpTem
 	if err != nil {
 		return nil, err
 	}
-	request = request.WithContext(ctx)
+
+	if httpTemplate.TimeoutSeconds != nil {
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(*httpTemplate.TimeoutSeconds)*time.Second)
+		defer cancel()
+		request = request.WithContext(ctx)
+	} else {
+		request = request.WithContext(ctx)
+	}
 
 	for _, header := range httpTemplate.Headers {
 		value := header.Value
@@ -279,15 +330,31 @@ func (ae *AgentExecutor) executeHTTPTemplateRequest(ctx context.Context, httpTem
 		}
 		request.Header.Add(header.Name, value)
 	}
-	httpClient := http.DefaultClient
-	if httpTemplate.TimeoutSeconds != nil {
-		httpClient.Timeout = time.Duration(*httpTemplate.TimeoutSeconds) * time.Second
-	}
-	response, err := httpClient.Do(request)
+
+	response, err := httpClients[httpTemplate.InsecureSkipVerify].Do(request)
 	if err != nil {
 		return nil, err
 	}
 	return response, nil
+}
+
+func (ae *AgentExecutor) executePluginTemplate(ctx context.Context, tmpl wfv1.Template, result *wfv1.NodeResult) (time.Duration, error) {
+	args := executorplugins.ExecuteTemplateArgs{
+		Workflow: &executorplugins.Workflow{
+			ObjectMeta: executorplugins.ObjectMeta{Name: ae.WorkflowName},
+		},
+		Template: &tmpl,
+	}
+	reply := &executorplugins.ExecuteTemplateReply{}
+	for _, plug := range ae.plugins {
+		if err := plug.ExecuteTemplate(ctx, args, reply); err != nil {
+			return 0, err
+		} else if reply.Node != nil {
+			*result = *reply.Node
+			return reply.GetRequeue(), nil
+		}
+	}
+	return 0, fmt.Errorf("no plugin executed the template")
 }
 
 func IsWorkflowCompleted(wts *wfv1.WorkflowTaskSet) bool {

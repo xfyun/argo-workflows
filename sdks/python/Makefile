@@ -22,6 +22,7 @@ generate:
 		sed 's/io.k8s.api.core.v1.//' | \
 		sed 's/io.k8s.apimachinery.pkg.apis.meta.v1.//' \
 		> $(WD)/swagger.json
+	cp ../../LICENSE $(WD)/LICENSE
 	$(DOCKER) openapitools/openapi-generator-cli:v5.2.1 \
 		generate \
 		--input-spec /wd/swagger.json \
@@ -40,3 +41,10 @@ generate:
 		--generate-alias-as-model
 	# https://vsupalov.com/docker-shared-permissions/#set-the-docker-user-when-running-your-container
 	$(CHOWN) $(WD) || sudo $(CHOWN) $(WD)
+
+install:
+	pip3 install ./client
+
+test:
+	../../hack/access-token.sh init
+	env ARGO_TOKEN="`../../hack/access-token.sh get`" python3 tests/*.py
