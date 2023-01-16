@@ -20,7 +20,7 @@ require (
 	github.com/gavv/httpexpect/v2 v2.8.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/go-jose/go-jose/v3 v3.0.0
-	github.com/go-openapi/jsonreference v0.20.1
+	github.com/go-openapi/jsonreference v0.20.2
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
