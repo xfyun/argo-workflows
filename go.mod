@@ -7,7 +7,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/TwinProduction/go-color v0.0.3
-	github.com/aliyun/aliyun-oss-go-sdk v2.2.6+incompatible
+	github.com/aliyun/aliyun-oss-go-sdk v2.2.7+incompatible
 	github.com/antonmedv/expr v1.12.5
 	github.com/argoproj-labs/argo-dataflow v0.10.3
 	github.com/argoproj/argo-events v1.7.6
