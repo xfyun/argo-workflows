@@ -10,7 +10,7 @@ require (
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/antonmedv/expr v1.15.5
 	github.com/argoproj-labs/argo-dataflow v0.10.3
-	github.com/argoproj/argo-events v1.9.0
+	github.com/argoproj/argo-events v1.9.1
 	github.com/argoproj/pkg v0.13.6
 	github.com/blushft/go-diagrams v0.0.0-20201006005127-c78c821223d9
 	github.com/colinmarc/hdfs v1.1.4-0.20180805212432-9746310a4d31
