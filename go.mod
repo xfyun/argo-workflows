@@ -34,7 +34,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/minio/minio-go/v7 v7.0.69
 	github.com/prometheus/client_golang v1.19.0
-	github.com/prometheus/client_model v0.6.0
+	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.51.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
