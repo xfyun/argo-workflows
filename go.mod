@@ -18,7 +18,7 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/go-git/go-git/v5 v5.12.0
-	github.com/go-jose/go-jose/v3 v3.0.3
+	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/go-openapi/jsonreference v0.21.0
 	github.com/go-sql-driver/mysql v1.9.0
 	github.com/gogo/protobuf v1.3.2
