@@ -13,7 +13,7 @@ require (
 	github.com/argoproj/pkg v0.13.6
 	github.com/blushft/go-diagrams v0.0.0-20201006005127-c78c821223d9
 	github.com/colinmarc/hdfs v1.1.4-0.20180805212432-9746310a4d31
-	github.com/coreos/go-oidc/v3 v3.12.0
+	github.com/coreos/go-oidc/v3 v3.13.0
 	github.com/doublerebel/bellows v0.0.0-20160303004610-f177d92a03d3
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/gavv/httpexpect/v2 v2.17.0
@@ -129,7 +129,7 @@ require (
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
