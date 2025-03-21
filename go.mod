@@ -21,7 +21,7 @@ require (
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/go-openapi/jsonreference v0.21.0
-	github.com/go-sql-driver/mysql v1.9.0
+	github.com/go-sql-driver/mysql v1.9.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-containerregistry v0.20.3
